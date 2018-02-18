@@ -1,6 +1,6 @@
 ###############################################
 #
-#  Configuration file for ncupgrade.sh
+#  Configuration file for ncupgrade
 #
 #  adjust values to your needs and copy this
 #  file to the same directory as ncupgrade.sh
@@ -12,7 +12,7 @@
 nextcloud_dir="/usr/share/nginx/nextcloud"
 
 
-# webserver needs to be stopped and restarted with command systemctl.
+# webserver needs to be stopped and restarted with command systemctl
 # Servicename of used webserver (nginx, apache2.service, httpd.service):
 webserver_service="nginx"
 
