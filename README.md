@@ -1,6 +1,7 @@
 # ncupgrade
 
 This Bash script performs an upgrade of a local Nextcloud installation based on the [Nextcloud documentation for manual upgrades](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#upgrade-manually)  
+
 **Use at own risk!**  
 
 ## Requirements
@@ -11,8 +12,8 @@ This Bash script performs an upgrade of a local Nextcloud installation based on 
 
 ## Quick Guide
 
-1. Clone the repository to your server and enter the repo: 
-`git clone https://github.com/BernieO/ncupgrade` 
+1. Clone the repository to your server and enter the repo:  
+`git clone https://github.com/BernieO/ncupgrade`  
 `cd ncupgrade`  
 
 2. Copy the example configuration file in the same directory as the script:  
@@ -28,7 +29,7 @@ This Bash script performs an upgrade of a local Nextcloud installation based on 
 
 6. Run the script with `./ncupgrade` and enter the version you want to upgrade your nextcloud installation to. Or enter alternatively "latest" to upgrade to the latest available stable version.  
 
-7. Check the output of the script for errors. For troubleshooting [check this out](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#troubleshooting)  
+7. Check the output of the script carefully for errors. For troubleshooting [check this out](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#troubleshooting)  
 
 8. Login to your Nextcloud webinterface and reenable all compatible 3rd party apps. 
 
