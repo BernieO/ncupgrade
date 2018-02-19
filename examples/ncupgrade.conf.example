@@ -12,7 +12,16 @@
 nextcloud_dir="/usr/share/nginx/nextcloud"
 
 
-# webserver needs to be stopped and restarted with command systemctl
+# according to the documentation the webserver needs to be stopped and
+# restarted when upgrading. However there might be cases where this
+# is not possible due to the resulting downtime of other webservices.
+# Choose "no" if you do not want to stop the webserver:
+stop_webserver="yes"
+
+
+# if you want to stop and start your webserver as recommended by the
+# documentation, the script needs to know the servicename for your
+# webserver to stop and start it with command systemctl.
 # Servicename of used webserver (nginx, apache2.service, httpd.service):
 webserver_service="nginx"
 

@@ -128,8 +128,11 @@ find nextcloud/ -type d -exec chmod 750 {} \;
 find nextcloud/ -type f -exec chmod 640 {} \;
 printf "%s\n" " done!"
 
-echo "+  stopping webserver"
-systemctl stop ${webserver_service}
+[[ "${stop_webserver}" == "no" ]] || {
+    echo "+  stopping webserver"
+    systemctl stop ${webserver_service}
+}
+
 
 echo "+  renaming old Nextcloud folder by adding current date and time to foldername"
 now=$(date +"%Y.%m.%d-%H.%M")
@@ -139,8 +142,10 @@ printf "%s" "+  moving new Nextcloud folder to desired location..."
 mv nextcloud "${nextcloud_dir}"
 printf "%s\n" " done!"
 
-echo "+  restarting Webserver"
-systemctl start ${webserver_service}
+[[ "${stop_webserver}" == "no" ]] || {
+    echo "+  starting webserver"
+    systemctl start ${webserver_service}
+}
 
 echo "+  invoking Nextclouds upgrade script:"
 sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
