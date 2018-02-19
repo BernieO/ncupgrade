@@ -1,7 +1,7 @@
 # ncupgrade
 
-This Bash script performs an upgrade of a local Nextcloud installation based on the [Nextcloud documentation for manual upgrades](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#upgrade-manually)  
-It may also be used to migrate from ownCloud to Nextcloud. [You need to make sure to follow a valid upgrade path though!](https://nextcloud.com/migration/)  
+This Bash script performs an upgrade of a local Nextcloud installation based on the [Nextcloud documentation for manual upgrades](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#upgrade-manually).
+It may also be used to migrate from ownCloud to Nextcloud. In this case you need to make sure to [follow a valid upgrade path though!](https://nextcloud.com/migration/)  
 
 **Use at own risk!**  
 
