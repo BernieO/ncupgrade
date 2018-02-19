@@ -6,8 +6,9 @@
 #  file to the same directory as ncupgrade
 #
 #  Before running the script:
-#    - create a backup of your database
-#    - create a backup of your data directory if it resides outside Nextclouds directory
+#    - back up the database
+#    - back up the data directory, if it resides outside Nextclouds directory
+#  See README.md for backup instructions
 #
 ###############################################
 

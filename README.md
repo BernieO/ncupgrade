@@ -24,12 +24,11 @@ This Bash script performs an upgrade of a local Nextcloud installation based on 
 
 4. Login to your Nextcloud webinterface and disable all 3rd party apps.  
 
-5a. It is strongly recommended to make a backup of the database before proceeding!  
-- for MySQL/MariaDB a dump can be created with (replace USERNAME with the value of `dbuser` in your config.php, password will be prompted):  
-`mysqldump -u USERNAME -p --lock-tables --all-databases > databasedump.sql`  
-- when using SQLite3 as database, it is sufficient to backup the file `owncloud.db` in Nextclouds datafolder.  
-
-5b. If  Nextclouds data directory resides outside of Nextclouds directory: back it up as well before proceeding!  
+5. Before proceeding it is strongly recommended to:  
+- back up the database  
+- back up Nextclouds data directory, if it resides outside Nextclouds directory  
+follow [these instructions to create a backup](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst#backup)  
+Notice: since `ncupgrade` will back up your existing Nextcloud directory, there is no need to back up folders `config` and `theme` as long as they reside inside Nextclouds directory.  
 
 6. Run the script with `./ncupgrade` and enter the version you want to upgrade your nextcloud installation to. Or enter alternatively "latest" to upgrade to the latest available stable version.  
 
