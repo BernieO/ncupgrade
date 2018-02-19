@@ -24,10 +24,9 @@
 echo "+++++++++++++++++++++++++++++++++++++"
 echo "+"
 echo "+  This script will upgrade your Nextcloud installation."
-echo "+  ATTENTION - if you are using a different database than SQLite3:"
-echo "+              create a backup of your database before proceeding!"
+echo "+  Use at own risk!"
 echo "+"
-echo "+  In any case: use this script at own risk!"
+echo "+  ATTENTION: create a backup of your database before proceeding!"
 echo "+"
 echo "+  To which version do you want to upgrade your Nextcloud?"
 
