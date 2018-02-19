@@ -5,6 +5,10 @@
 #  adjust values to your needs and copy this
 #  file to the same directory as ncupgrade
 #
+#  Before running the script:
+#    - create a backup of your database
+#    - create a backup of your data directory if it resides outside Nextclouds directory
+#
 ###############################################
 
 
