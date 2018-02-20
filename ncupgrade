@@ -32,16 +32,20 @@ echo "+    - back up Nextclouds data directory, if it is located outside of Next
 echo "+  See README.md for instructions how to back up."
 echo "+"
 echo "+  To which version do you want to upgrade your Nextcloud?"
+echo "+  Please enter (X needs to be a digit):"
+echo "+    - either version string XX.X.X (e.g. '13.0.0')"
+echo "+    - or 'latest-XX' to upgrade to latest available version of main version XX"
+echo "+    - or 'latest' to upgrade to latest available version"
 
-# regex allows only XX.X.XX and latest (X must be a digit):
-regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest)$'
+# regex allows only "XX.X.XX", "latest" or "latest-XX" (X must be a digit):
+regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
 
 # ask for version to be upgraded to (and repeat if no valid value was entered):
 while [[ -z "${upgrade_to_version:-}" ]]; do
-    echo "+  (either enter version number (e.g. '13.0.0') or 'latest' for latest stable release)"
     read -r -p "+  Upgrade to version: " upgrade_to_version
     if [[ ! "${upgrade_to_version}" =~ ${regex} ]]; then
         echo "-- ERROR: not a valid value! Try again."
+    echo "+  either enter version number (e.g. '13.0.0'), 'latest-XX' or 'latest'"
         unset upgrade_to_version
     else
         # if valid value was entered - ask for confirmation, to make sure there is no typo:
@@ -65,6 +69,15 @@ while [[ -z "${upgrade_to_version:-}" ]]; do
     fi
 done
 
+# assign archive name according to entered version (using tar.bz2, because zip doesn't contain permissions):
+if [[ "${upgrade_to_version}" =~ latest ]]; then
+    # if 'latest' or 'latest-XX' was given it is enough to append '.tar.bz2':
+    nextcloud_archive="${upgrade_to_version}.tar.bz2"
+else
+    # if version number was given, archive is named nextcloud-XX.X.XX.tar.bz2:
+    nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
+fi
+
 # check for existing ncupgrade onfig file:
 if [[ -f ncupgrade.conf ]]; then
     # read config file - this file needs to reside in the same directory as this script (see examples/ncupgrade.conf):
@@ -87,14 +100,14 @@ cd /tmp/ncupgrade
 # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
 rm -r * > /dev/null 2>&1
 
-printf "%s" "+  downloading Nextcloud archive 'nextcloud-${upgrade_to_version}.tar.bz2', according checksum and PGP signature..."
-curl -sS -O "https://download.nextcloud.com/server/releases/nextcloud-${upgrade_to_version}.tar.bz2"
-curl -sS -O "https://download.nextcloud.com/server/releases/nextcloud-${upgrade_to_version}.tar.bz2.sha256"
-curl -sS -O "https://download.nextcloud.com/server/releases/nextcloud-${upgrade_to_version}.tar.bz2.asc"
+printf "%s" "+  downloading Nextcloud archive '${nextcloud_archive}', according checksum and PGP signature..."
+curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}"
+curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha256"
+curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.asc"
 printf "%s\n" " done!"
 
 printf "%s" "+  verifying SHA256 checksum of downloaded archive... "
-sha256sum -c "nextcloud-${upgrade_to_version}.tar.bz2.sha256" < "nextcloud-${upgrade_to_version}.tar.bz2"
+sha256sum -c "${nextcloud_archive}.sha256" < "${nextcloud_archive}"
 # error and exit, if checksum test failed:
 if [[ $? != 0 ]]; then
     printf "\n%s\n" "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt. Exiting"
@@ -104,7 +117,7 @@ fi
 printf "%s" "+  verifying PGP signature of downloaded archive..."
 curl -sS -O "https://nextcloud.com/nextcloud.asc"
 gpg --import nextcloud.asc > /dev/null 2>&1
-gpg --verify "nextcloud-${upgrade_to_version}.tar.bz2.asc" "nextcloud-${upgrade_to_version}.tar.bz2" > /dev/null 2>&1
+gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
 # error and exit, if signature verification failed:
 if [[ $? != 0 ]]; then
     printf "\n%s\n" "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt. Exiting"
@@ -113,7 +126,7 @@ fi
 printf "%s\n" " PGP signature valid!"
 
 printf "%s" "+  extracting archive..."
-tar xfj "nextcloud-${upgrade_to_version}.tar.bz2"
+tar xfj "${nextcloud_archive}"
 printf "%s\n" " done!"
 echo "+  copying Nextclouds configuration file"
 cp -a "${nextcloud_dir}/config/config.php" nextcloud/config/
