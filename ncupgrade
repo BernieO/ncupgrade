@@ -102,12 +102,12 @@ rm -r * > /dev/null 2>&1
 
 printf "%s" "+  downloading Nextcloud archive '${nextcloud_archive}', according checksum and PGP signature..."
 curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}"
-curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha256"
+curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha512"
 curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.asc"
 printf "%s\n" " done!"
 
-printf "%s" "+  verifying SHA256 checksum of downloaded archive... "
-sha256sum -c "${nextcloud_archive}.sha256" < "${nextcloud_archive}"
+printf "%s" "+  verifying SHA512 checksum of downloaded archive... "
+sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
 # error and exit, if checksum test failed:
 if [[ $? != 0 ]]; then
     printf "\n%s\n" "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt. Exiting"
