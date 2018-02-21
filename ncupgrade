@@ -173,8 +173,12 @@ printf "%s\n" " done!"
     systemctl start ${webserver_service}
 }
 
-echo "+  invoking Nextclouds upgrade script:"
-sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
+upgrade_nextcloud() {
+# invokes Nextclouds occ upgrade script
+
+  echo "+  invoking Nextclouds upgrade script:"
+  sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
+}
 
 clean_up() {
 # cleans up:
@@ -198,6 +202,7 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+upgrade_nextcloud
 maintenance_mode "off"
 clean_up
 print_footer
