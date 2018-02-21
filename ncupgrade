@@ -91,8 +91,18 @@ else
     exit 1
 fi
 
-printf "%s" "+  enabling Nextclouds maintenance mode... "
-sudo -u ${htuser} php "${nextcloud_dir}/occ" maintenance:mode --on
+maintenance_mode() {
+# enables or disables Nextclouds maintenance mode (depending on $1: on|off)
+
+  local text format
+
+  [[ "${1}" == "on" ]] && text="enabl" && format="%s"
+  [[ "${1}" == "off" ]] && text="disabl" && format="%s\n"
+  printf "${format}" "+  ${text}ing Nextclouds maintenance mode... "
+  sudo -u ${htuser} php "${nextcloud_dir}/occ" maintenance:mode --"${1}"
+}
+
+maintenance_mode "on"
 
 echo "+  creating temporary directory"
 mkdir -p /tmp/ncupgrade
@@ -166,9 +176,6 @@ printf "%s\n" " done!"
 echo "+  invoking Nextclouds upgrade script:"
 sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
 
-echo "+  disabling Nextclouds maintenance mode"
-sudo -u ${htuser} php "${nextcloud_dir}/occ" maintenance:mode --off
-
 clean_up() {
 # cleans up:
 
@@ -191,7 +198,8 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
-cleanup
+maintenance_mode "off"
+clean_up
 print_footer
 
 exit 0
