@@ -138,21 +138,30 @@ printf "%s\n" " PGP signature valid!"
 printf "%s" "+  extracting archive..."
 tar xfj "${nextcloud_archive}"
 printf "%s\n" " done!"
-echo "+  copying Nextclouds configuration file"
-cp -a "${nextcloud_dir}/config/config.php" nextcloud/config/
 
-# check whether data directory resides inside Nextcloud directory. If yes: copy data directory as well
-if [[ -d "${nextcloud_dir}/data" ]]; then
+copy_config_data() {
+# copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
+
+  echo "+  copying Nextclouds configuration file"
+  cp -a "${nextcloud_dir}/config/config.php" nextcloud/config/
+
+  # check whether data directory resides inside Nextcloud directory. If yes: copy data directory as well
+  if [[ -d "${nextcloud_dir}/data" ]]; then
     printf "%s" "+  copying datafolder (resides inside nextclouds directory)..."
     cp -a "${nextcloud_dir}/data" nextcloud/
     printf "%s\n" " done!"
-fi
+  fi
+}
 
-printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
-chown -R ${htuser}:${htgroup} nextcloud
-find nextcloud/ -type d -exec chmod 750 {} \;
-find nextcloud/ -type f -exec chmod 640 {} \;
-printf "%s\n" " done!"
+adjust_permissions() {
+# adjusts permissions for extracted archive (new Nextcloud directory)
+
+  printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
+  chown -R ${htuser}:${htgroup} nextcloud
+  find nextcloud/ -type d -exec chmod 750 {} \;
+  find nextcloud/ -type f -exec chmod 640 {} \;
+  printf "%s\n" " done!"
+}
 
 start_stop_webserver() {
 # starts or stops webserver (depending on $1: start|stop)
@@ -212,6 +221,8 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+copy_config_data
+adjust_permissions
 rename_old_nextcloud
 move_new_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
