@@ -167,13 +167,21 @@ start_stop_webserver() {
 
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 
-echo "+  renaming old Nextcloud folder by adding current date and time to foldername"
-now=$(date +"%Y.%m.%d-%H.%M")
-mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
+rename_old_nextcloud() {
+# adds current date and time to old Nextcloud folder to keep it as backup
 
-printf "%s" "+  moving new Nextcloud folder to desired location..."
-mv nextcloud "${nextcloud_dir}"
-printf "%s\n" " done!"
+  echo "+  renaming old Nextcloud folder by adding current date and time to foldername"
+  now=$(date +"%Y.%m.%d-%H.%M")
+  mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
+}
+
+move_new_nextcloud() {
+# moves the new Nextcloud folder to the location of Nextcloud-directory
+
+  printf "%s" "+  moving new Nextcloud folder to desired location..."
+  mv nextcloud "${nextcloud_dir}"
+  printf "%s\n" " done!"
+}
 
 upgrade_nextcloud() {
 # invokes Nextclouds occ upgrade script
@@ -204,6 +212,8 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+rename_old_nextcloud
+move_new_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
 maintenance_mode "off"
