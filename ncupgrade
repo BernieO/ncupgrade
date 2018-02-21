@@ -102,42 +102,60 @@ maintenance_mode() {
   sudo -u ${htuser} php "${nextcloud_dir}/occ" maintenance:mode --"${1}"
 }
 
-maintenance_mode "on"
+create_temp_dir() {
+# creates a temporary directory
 
-echo "+  creating temporary directory"
-mkdir -p /tmp/ncupgrade
-cd /tmp/ncupgrade
-# remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
-rm -r * > /dev/null 2>&1
+  echo "+  creating temporary directory"
+  mkdir -p /tmp/ncupgrade
+  cd /tmp/ncupgrade
+  # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
+  rm -r * > /dev/null 2>&1
+}
 
-printf "%s" "+  downloading Nextcloud archive '${nextcloud_archive}', according checksum and PGP signature..."
-curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}"
-curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha512"
-curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.asc"
-printf "%s\n" " done!"
+download_archive() {
+# downloads Nextcloud archive, according SHA512 checksum and according PGP signature
 
-printf "%s" "+  verifying SHA512 checksum of downloaded archive... "
-sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
-# error and exit, if checksum test failed:
-if [[ $? != 0 ]]; then
+  printf "%s" "+  downloading Nextcloud archive '${nextcloud_archive}', according checksum and PGP signature..."
+  curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}"
+  curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha512"
+  curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.asc"
+  printf "%s\n" " done!"
+}
+
+verify_checksum() {
+# verifies SHA512 checksum of archive
+
+  printf "%s" "+  verifying SHA512 checksum of downloaded archive... "
+  sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
+  # error and exit, if checksum test failed:
+  if [[ $? != 0 ]]; then
     printf "\n%s\n" "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt. Exiting"
     exit 1
-fi
+  fi
+}
 
-printf "%s" "+  verifying PGP signature of downloaded archive..."
-curl -sS -O "https://nextcloud.com/nextcloud.asc"
-gpg --import nextcloud.asc > /dev/null 2>&1
-gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
-# error and exit, if signature verification failed:
-if [[ $? != 0 ]]; then
+verify_signature() {
+# verifies PHP signature of archive
+
+  printf "%s" "+  verifying PGP signature of downloaded archive..."
+  curl -sS -O "https://nextcloud.com/nextcloud.asc"
+  gpg --import nextcloud.asc > /dev/null 2>&1
+  gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
+  # error and exit, if signature verification failed:
+  if [[ $? != 0 ]]; then
     printf "\n%s\n" "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt. Exiting"
     exit 1
-fi
-printf "%s\n" " PGP signature valid!"
+  fi
+  printf "%s\n" " PGP signature valid!"
+}
 
-printf "%s" "+  extracting archive..."
-tar xfj "${nextcloud_archive}"
-printf "%s\n" " done!"
+extract_archive() {
+# extracts archive
+
+  printf "%s" "+  extracting archive..."
+  tar xfj "${nextcloud_archive}"
+  printf "%s\n" " done!"
+}
 
 copy_config_data() {
 # copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
@@ -221,6 +239,12 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+maintenance_mode "on"
+create_temp_dir
+download_archive
+verify_checksum
+verify_signature
+extract_archive
 copy_config_data
 adjust_permissions
 rename_old_nextcloud
