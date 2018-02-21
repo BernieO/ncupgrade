@@ -78,18 +78,22 @@ else
     nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
 fi
 
-# check for existing ncupgrade onfig file:
-if [[ -f ncupgrade.conf ]]; then
+read_configfile() {
+# reads ncupgrades configfile ncupgrade.conf
+
+  # check for existing ncupgrade onfig file:
+  if [[ -f ncupgrade.conf ]]; then
     # read config file - this file needs to reside in the same directory as this script (see examples/ncupgrade.conf):
     echo "+  reading configuration file ncupgrade.conf"
     . ncupgrade.conf
-else
+  else
     # if no configuration file next to this script error and exit:
     echo "-- ERROR: Configuration file ncupgrade.conf not found."
     echo "-- This file needs to be in the same directory as this script."
     echo "-- See examples/ncupgrade.conf.example - Exiting."
     exit 1
-fi
+  fi
+}
 
 maintenance_mode() {
 # enables or disables Nextclouds maintenance mode (depending on $1: on|off)
@@ -239,6 +243,7 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+read_configfile
 maintenance_mode "on"
 create_temp_dir
 download_archive
