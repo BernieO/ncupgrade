@@ -154,11 +154,18 @@ find nextcloud/ -type d -exec chmod 750 {} \;
 find nextcloud/ -type f -exec chmod 640 {} \;
 printf "%s\n" " done!"
 
-[[ "${stop_webserver}" == "no" ]] || {
-    echo "+  stopping webserver"
-    systemctl stop ${webserver_service}
+start_stop_webserver() {
+# starts or stops webserver (depending on $1: start|stop)
+
+  local text
+
+  [[ "${1}" == "start" ]] && text="start"
+  [[ "${1}" == "stop" ]] && text="stopp"
+  echo "+  ${text}ing webserver"
+  systemctl ${1} ${webserver_service}
 }
 
+[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 
 echo "+  renaming old Nextcloud folder by adding current date and time to foldername"
 now=$(date +"%Y.%m.%d-%H.%M")
@@ -167,11 +174,6 @@ mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
 printf "%s" "+  moving new Nextcloud folder to desired location..."
 mv nextcloud "${nextcloud_dir}"
 printf "%s\n" " done!"
-
-[[ "${stop_webserver}" == "no" ]] || {
-    echo "+  starting webserver"
-    systemctl start ${webserver_service}
-}
 
 upgrade_nextcloud() {
 # invokes Nextclouds occ upgrade script
@@ -202,6 +204,7 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
 maintenance_mode "off"
 clean_up
