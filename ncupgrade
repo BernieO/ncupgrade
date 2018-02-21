@@ -19,64 +19,71 @@
 #######################################################
 #######################################################
 
+print_header() {
+# prints a nice header with welcome message and advice to have a backup
 
-# print a nice header:
-echo "+++++++++++++++++++++++++++++++++++++"
-echo "+"
-echo "+  This script will upgrade your Nextcloud installation."
-echo "+  Use at own risk!"
-echo "+"
-echo "+  ATTENTION BEFORE PROCEEDING:"
-echo "+    - back up your database!"
-echo "+    - back up Nextclouds data directory, if it is located outside of Nextclouds directory!"
-echo "+  See README.md for instructions how to back up."
-echo "+"
-echo "+  To which version do you want to upgrade your Nextcloud?"
-echo "+  Please enter (X needs to be a digit):"
-echo "+    - either version string XX.X.X (e.g. '13.0.0')"
-echo "+    - or 'latest-XX' to upgrade to latest available version of main version XX"
-echo "+    - or 'latest' to upgrade to latest available version"
+  echo "+++++++++++++++++++++++++++++++++++++"
+  echo "+"
+  echo "+  This script will upgrade your Nextcloud installation."
+  echo "+  Use at own risk!"
+  echo "+"
+  echo "+  ATTENTION BEFORE PROCEEDING:"
+  echo "+    - back up your database!"
+  echo "+    - back up Nextclouds data directory, if it is located outside of Nextclouds directory!"
+  echo "+  See README.md for instructions how to back up."
+  echo "+"
+}
 
-# regex allows only "XX.X.XX", "latest" or "latest-XX" (X must be a digit):
-regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
+ask_for_version() {
+# asks for version Nextcloud shall be upgraded to, makes sure a valid value is entered and assigns archive name for download
 
-# ask for version to be upgraded to (and repeat if no valid value was entered):
-while [[ -z "${upgrade_to_version:-}" ]]; do
+  echo "+  To which version do you want to upgrade your Nextcloud?"
+  echo "+  Please enter (X needs to be a digit):"
+  echo "+    - either version string XX.X.X (e.g. '13.0.0')"
+  echo "+    - or 'latest-XX' to upgrade to latest available version of main version XX"
+  echo "+    - or 'latest' to upgrade to latest available version"
+
+  # regex allows only "XX.X.XX", "latest" or "latest-XX" (X must be a digit):
+  regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
+
+  # ask for version to be upgraded to (and repeat if no valid value was entered):
+  while [[ -z "${upgrade_to_version:-}" ]]; do
     read -r -p "+  Upgrade to version: " upgrade_to_version
     if [[ ! "${upgrade_to_version}" =~ ${regex} ]]; then
-        echo "-- ERROR: not a valid value! Try again."
-    echo "+  either enter version number (e.g. '13.0.0'), 'latest-XX' or 'latest'"
-        unset upgrade_to_version
+      echo "-- ERROR: not a valid value! Try again."
+      echo "+  either enter version number (e.g. '13.0.0'), 'latest-XX' or 'latest'"
+      unset upgrade_to_version
     else
-        # if valid value was entered - ask for confirmation, to make sure there is no typo:
-        while read -r -n 1 -p "+  Confirm upgrade to version '${upgrade_to_version}' (Y/N): " sure; do
-            if [[ ${sure} = [YyNn] ]]; then
-                [[ ${sure} = [Yy] ]] && {
-                    # if confirmed (Y or y): exit the while loop and proceed:
-                    printf "\n%s\n" "+  Confirmed. Starting upgrade"
-                    break
-                }
-                [[ ${sure} = [Nn] ]] && {
-                    # if not confirmed (N or n) error and exit:
-                    printf "\n%s\n" "-- ERROR: upgrade to ${upgrade_to_version} not confirmed. Exiting"
-                    exit 1
-                }
-            else
-                # if not a valid value was entered - print newline and repeat while loop:
-                printf "\n"
-            fi
-        done
+      # if valid value was entered - ask for confirmation, to make sure there is no typo:
+      while read -r -n 1 -p "+  Confirm upgrade to version '${upgrade_to_version}' (Y/N): " sure; do
+        if [[ ${sure} = [YyNn] ]]; then
+          [[ ${sure} = [Yy] ]] && {
+            # if confirmed (Y or y): exit the while loop and proceed:
+            printf "\n%s\n" "+  Confirmed. Starting upgrade"
+            break
+          }
+          [[ ${sure} = [Nn] ]] && {
+            # if not confirmed (N or n) error and exit:
+            printf "\n%s\n" "-- ERROR: upgrade to ${upgrade_to_version} not confirmed. Exiting"
+            exit 1
+          }
+        else
+          # if not a valid value was entered - print newline and repeat while loop:
+          printf "\n"
+        fi
+      done
     fi
-done
+  done
 
-# assign archive name according to entered version (using tar.bz2, because zip doesn't contain permissions):
-if [[ "${upgrade_to_version}" =~ latest ]]; then
+  # assign archive name according to entered version (using tar.bz2, because zip doesn't contain permissions):
+  if [[ "${upgrade_to_version}" =~ latest ]]; then
     # if 'latest' or 'latest-XX' was given it is enough to append '.tar.bz2':
     nextcloud_archive="${upgrade_to_version}.tar.bz2"
-else
+  else
     # if version number was given, archive is named nextcloud-XX.X.XX.tar.bz2:
     nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
-fi
+  fi
+}
 
 read_configfile() {
 # reads ncupgrades configfile ncupgrade.conf
@@ -196,8 +203,6 @@ start_stop_webserver() {
   systemctl ${1} ${webserver_service}
 }
 
-[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
-
 rename_old_nextcloud() {
 # adds current date and time to old Nextcloud folder to keep it as backup
 
@@ -243,6 +248,8 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+print_header
+ask_for_version
 read_configfile
 maintenance_mode "on"
 create_temp_dir
@@ -252,6 +259,7 @@ verify_signature
 extract_archive
 copy_config_data
 adjust_permissions
+[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
 move_new_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
