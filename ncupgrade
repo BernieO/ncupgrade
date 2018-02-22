@@ -105,12 +105,12 @@ read_configfile() {
 maintenance_mode() {
 # enables or disables Nextclouds maintenance mode (depending on $1: on|off)
 
-  local text format
+  local text
 
-  [[ "${1}" == "on" ]] && text="enabl" && format="%s"
-  [[ "${1}" == "off" ]] && text="disabl" && format="%s\n"
-  printf "${format}" "+  ${text}ing Nextclouds maintenance mode... "
-  sudo -u ${htuser} php "${nextcloud_dir}/occ" maintenance:mode --"${1}"
+  [[ "${1}" == "on" ]] && text="enabl"
+  [[ "${1}" == "off" ]] && text="disabl"
+  printf "%s" "+  ${text}ing Nextclouds maintenance mode... "
+  sudo -u ${htuser} php "${nextcloud_dir}/occ" --no-warnings maintenance:mode --${1}
 }
 
 create_temp_dir() {
