@@ -8,7 +8,7 @@ It may also be used to migrate from ownCloud to Nextcloud. In this case you need
 ## Requirements
 
 - local Nextcloud installation  
-- package `curl` 
+- packages `curl`, `sudo` and `gnupg`  
 - this script needs to be run as `root`, because the webserver needs to be stopped and restarted  
 
 ## Quick Guide
