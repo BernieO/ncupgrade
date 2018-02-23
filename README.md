@@ -26,10 +26,11 @@ It may also be used to migrate from ownCloud to Nextcloud. In this case you need
 4. Login to your Nextcloud webinterface and disable all 3rd party apps.  
 
 5. Before proceeding it is strongly recommended to:  
-- back up the database  
 - back up Nextclouds data directory, if it resides outside Nextclouds directory  
 follow [these instructions to create a backup](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst#backup)  
-Notice: since `ncupgrade` will back up your existing Nextcloud directory, there is no need to back up folders `config` and `theme` as long as they reside inside Nextclouds directory.  
+Notice:
+- `ncupgrade` will back up Nextclouds database. So no need to back it up manually.
+- since `ncupgrade` will back up your existing Nextcloud directory, there is no need to back up folders `config` and `theme` as long as they reside inside Nextclouds directory.  
 
 6. Run the script with `./ncupgrade` and enter the version you want to upgrade your nextcloud installation to. Or enter alternatively "latest" to upgrade to the latest available stable version.  
 

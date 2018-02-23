@@ -17,6 +17,14 @@
 nextcloud_dir="/usr/share/nginx/nextcloud"
 
 
+# directory to store backups:
+backup_dir="./ncupgrade_backups"
+
+
+# choose how to compress backup ("tar.gz" or "zip")
+compression_method="tar.gz"
+
+
 # according to the documentation the webserver needs to be stopped and
 # restarted when upgrading. However there might be cases where this
 # is not possible due to the resulting downtime of other webservices.
