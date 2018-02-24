@@ -358,13 +358,17 @@ move_new_nextcloud() {
   printf "%s\n" " done!"
 }
 
-copy_config_data() {
-# copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
-
-  local regex
+copy_config() {
+# copies Nextclouds config.php from old Nextcloud directory to new Nextcloud directory
 
   echo "+  copying config.php from old Nextcloud directory to new Nextcloud directory"
   cp -a "${nextcloud_dir}_${now}/config/config.php" "${nextcloud_dir}/config/"
+}
+
+copy_data() {
+# copies Nextclouds data directory from old Nextcloud folder to new Nextcloud folder (only if it is located inside Nextcloud folder)
+
+  local regex
 
   # check whether data directory is located inside nextcloud directory - if yes, copy it to new Nextcloud:
   regex="^${nextcloud_dir}*"
@@ -374,6 +378,10 @@ copy_config_data() {
     printf "%s\n" " done!"
   fi
 }
+
+# todo:
+#copy_3rd_party_apps() {
+#}
 
 adjust_permissions() {
 # adjusts permissions for Nextcloud directory
@@ -386,7 +394,7 @@ adjust_permissions() {
 }
 
 upgrade_nextcloud() {
-# invokes Nextclouds occ upgrade script
+# launches Nextclouds occ upgrade script
 
   echo "+  launching the upgrade from the command line using 'occ':"
   sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
@@ -428,7 +436,9 @@ download_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
 move_new_nextcloud
-copy_config_data
+copy_config
+copy_data
+#copy_3rd_party_apps
 adjust_permissions
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
