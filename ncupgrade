@@ -329,20 +329,6 @@ download_nextcloud() {
   extract_archive
 }
 
-copy_config_data() {
-# copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
-
-  echo "+  copying Nextclouds configuration file"
-  cp -a "${nextcloud_dir}/config/config.php" nextcloud/config/
-
-  # check whether data directory resides inside Nextcloud directory. If yes: copy data directory as well
-  if [[ -d "${nextcloud_dir}/data" ]]; then
-    printf "%s" "+  copying datafolder (resides inside nextclouds directory)..."
-    cp -a "${nextcloud_dir}/data" nextcloud/
-    printf "%s\n" " done!"
-  fi
-}
-
 adjust_permissions() {
 # adjusts permissions for extracted archive (new Nextcloud directory)
 
@@ -377,6 +363,20 @@ move_new_nextcloud() {
   printf "%s" "+  moving new Nextcloud folder to desired location..."
   mv nextcloud "${nextcloud_dir}"
   printf "%s\n" " done!"
+}
+
+copy_config_data() {
+# copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
+
+  echo "+  copying config.php from old Nextcloud directory to new Nextcloud directory"
+  cp -a "${nextcloud_dir}_${now}/config/config.php" "${nextcloud_dir}/config/"
+
+  # check whether data directory resides inside Nextcloud directory. If yes: copy data directory as well
+  if [[ -d "${nextcloud_dir}_${now}/data" ]]; then
+    printf "%s" "+  copying datafolder (resides inside nextclouds directory) to new Nextcloud..."
+    cp -a "${nextcloud_dir}_${now}/data" "${nextcloud-dir}/"
+    printf "%s\n" " done!"
+  fi
 }
 
 upgrade_nextcloud() {
@@ -418,11 +418,11 @@ maintenance_mode "on"
 create_temp_dir
 create_backup
 download_nextcloud
-copy_config_data
-adjust_permissions
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
 move_new_nextcloud
+copy_config_data
+adjust_permissions
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
 maintenance_mode "off"
