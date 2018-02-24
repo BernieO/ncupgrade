@@ -346,14 +346,14 @@ start_stop_webserver() {
 rename_old_nextcloud() {
 # adds current date and time to old Nextcloud folder to keep it as backup
 
-  echo "+  renaming old Nextcloud folder by adding current date and time to foldername"
+  echo "+  renaming old Nextcloud folder (adding current date and time to foldername)"
   mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
 }
 
 move_new_nextcloud() {
 # moves the new Nextcloud folder to the location of Nextcloud-directory
 
-  printf "%s" "+  moving new Nextcloud folder to desired location..."
+  printf "%s" "+  moving new Nextcloud folder to original location of old server..."
   mv nextcloud "${nextcloud_dir}"
   printf "%s\n" " done!"
 }
@@ -369,7 +369,7 @@ copy_config_data() {
   # check whether data directory is located inside nextcloud directory - if yes, copy it to new Nextcloud:
   regex="^${nextcloud_dir}*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
-    printf "%s" "+  copying datafolder (resides inside nextclouds directory) to new Nextcloud..."
+    printf "%s" "+  copying datafolder (resides inside Nextclouds directory) to new Nextcloud directory..."
     cp -a "${nextcloud_dir}_${now}/data" "${nextcloud_dir}/"
     printf "%s\n" " done!"
   fi
@@ -388,7 +388,7 @@ adjust_permissions() {
 upgrade_nextcloud() {
 # invokes Nextclouds occ upgrade script
 
-  echo "+  invoking Nextclouds upgrade script:"
+  echo "+  launching the upgrade from the command line using 'occ':"
   sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
 }
 
@@ -406,12 +406,12 @@ print_footer() {
   echo "+"
   echo "+  Don't forget to check output of nextclouds upgrade script for errors!"
   echo "+"
-  echo "+  If there were any errors - have a look at the troubleshooting guide:"
-  echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#troubleshooting"
+  echo "+  If there were any errors - have a look at the troubleshooting section:"
+  echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst"
   echo "+"
   echo "+  If you need to restore your previous installation, follow this guide:"
   echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/restore.rst"
-  echo "+  Find the backup of your previous installaation here:"
+  echo "+  Find the backup of your previous installation here:"
   echo "+     --> ${backup_dir}/"
   echo "+"
   echo "+++++++++++++++++++++++++++++++++++++"
