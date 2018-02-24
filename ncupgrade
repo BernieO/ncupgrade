@@ -131,12 +131,6 @@ create_temp_dir() {
   rm -r * > /dev/null 2>&1
 }
 
-create_backup_dir() {
-# creates backup directory if not yet existing:
-
-  mkdir -p "${backup_dir}"
-}
-
 get_nc_config_value() {
 # reads value ($1) from Nextclouds system configuration
 
@@ -146,32 +140,38 @@ get_nc_config_value() {
   echo "${value}"
 }
 
-compress_move_backup() {
+compress_backup() {
 # compresses backed up and moves compressed backup to backup folder
 # arguments:
-#       $1 - file to be compressed and moved (needs to be presend in $temp_dir
+#       $1 - path to be compressed (file or directory)
+#       $2 - path (directory) under which the compressed file shall be saved
+
+  local original_dir compress_error
+
+  # store current directory (to be able to switch back):
+  original_dir="$(pwd)"
+  # change to directory that contains the directory or file to be compressed:
+  cd "${1%/*}"
 
   # compress backup using the configured method (zip or tar.gz):
   if [[ "${compression_method}" == "zip" ]]; then
-    # use zip to compress folder with backed up files:
-    zip -r -q "${1}.zip" "${1}"
+    # use zip to compress file or directory:
+    zip -r -q "${2}/${1##*/}_${now}.zip" "${1##*/}"
     # store error, to be able to print error message:
     [[ $? -eq 0 ]] || compress_error="1"
   else
     # use "tar.gz" as compression_method, in case invalid value was entered:
     compression_method="tar.gz"
     # use tar.gz to compress folder with backed up files:
-    tar -czf "${1}.tar.gz" "${1}"
+    tar -czf "${2}/${1##*/}_${now}.tar.gz" "${1##*/}"
     # store error, to be able to print error message:
     [[ $? -eq 0 ]] || compress_error="1"
   fi
+  # print error message, if an error occured
   [[ "${compress_error}" == "1" ]] && printf "\n%s\n" "-- ERROR: Compressing the files produced an error. See lines right above."
 
-  # move compressed backup to backup directory:
-  mv "${1}.${compression_method}" "${backup_dir}/"
-
-  # remove original (uncompressed) files:
-  rm -r "${1}"
+  # change back to original directory:
+  cd "${original_dir}"
 }
 
 backup_database() {
@@ -215,23 +215,69 @@ backup_database() {
 
     if [[  "$dbtype" == "mysql" ]]; then
       # dump MySQL/MariaDB database:
-      mysqldump --single-transaction -h ${dbhost} ${dbprotocol} -u ${dbuser} -p${dbpassword} ${dbname} > "${temp_dir}/nextcloud-sqlbkp_${now}.bak"
+      mysqldump --single-transaction -h ${dbhost} ${dbprotocol} -u ${dbuser} -p${dbpassword} ${dbname} > "${temp_dir}/nextcloud-sqlbkp.bak"
     elif [[ "$dbtype" == "pgsql" ]]; then
       # dump PostgreSQL database:
-      PGPASSWORD="${dbpassword}" pg_dump ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} -f "${temp_dir}/nextcloud-sqlbkp_${now}.bak"
+      PGPASSWORD="${dbpassword}" pg_dump ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} -f "${temp_dir}/nextcloud-sqlbkp.bak"
     fi
+    # unset sensitive data:
+    unset PGPASSWORD dbpassword dbuser
 
   elif [[ "$dbtype" == "sqlite3" ]]; then
-    # SQLite3 database is located in data directory. Let's find out where that is:
-    nc_data_dir="$(get_nc_config_value "datadirectory")"
     # dump sqlite3 database:
-    sqlite3 ${nc_data_dir}/owncloud.db .dump > "${temp_dir}/nextcloud-sqlbkp_${now}.bak"
+    sqlite3 ${nc_data_dir}/owncloud.db .dump > "${temp_dir}/nextcloud-sqlbkp.bak"
   fi
 
   # compress database backup and move it to backup folder:
-  compress_move_backup "nextcloud-sqlbkp_${now}.bak"
+  compress_backup "${temp_dir}/nextcloud-sqlbkp.bak" "${backup_dir}"
 
   printf "%s\n" "done!"
+}
+
+backup_data_dir() {
+# stores a compressed backup of Nextclouds data directory in backup directory
+
+  local regex
+
+  # check whether data directory is located inside nextcloud directory:
+  regex="^${nextcloud_dir}*"
+  if [[ "${nc_data_dir}" =~ ${regex} ]]; then
+    echo "+  no need to back up data directory (located inside Nextcloud directory which will be backed up later anyway)"
+  else
+    printf "%s" "+  backing up data directory (located outside of Nextcloud folder)... "
+    # compress data directory and store it in backup directory:
+    compress_backup "${nc_data_dir}" "${backup_dir}"
+    printf "%s\n" "done!"
+  fi
+}
+
+backup_nc_dir() {
+# stores a compressed backup of Nextclouds directory in backup directory
+
+  printf "%s" "+  backing up Nextcloud directory... "
+  # compress data directory and store it in backup directory:
+  compress_backup "${nextcloud_dir}" "${backup_dir}"
+  printf "%s\n" "done!"
+}
+
+create_backup() {
+# creates backup of Nextcloud installation based on official documentation:
+# https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst
+
+  # create backup directory (in case it does not exist yet):
+  mkdir -p "${backup_dir}"
+
+  # make sure we know the location of Nextclouds data directory:
+  [[ -z ${nc_data_dir:-} ]] && nc_data_dir="$(get_nc_config_value "datadirectory")"
+
+  # Maintenance mode is already enabled at this stage of this script
+
+  # Backup folders:
+  backup_data_dir   # back up Nextclouds data directory (in case it is located outside Nextclouds directory)
+  backup_nc_dir     # back up Nextcloud directory (contains then also config.php, themes and 3rd party apps)
+
+  # Backup database:
+  backup_database
 }
 
 download_archive() {
@@ -363,8 +409,7 @@ ask_for_version
 read_configfile
 maintenance_mode "on"
 create_temp_dir
-create_backup_dir
-backup_database
+create_backup
 download_archive
 verify_checksum
 verify_signature
