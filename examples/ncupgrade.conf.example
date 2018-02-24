@@ -5,11 +5,6 @@
 #  adjust values to your needs and copy this
 #  file to the same directory as ncupgrade
 #
-#  Before running the script:
-#    - back up the database
-#    - back up the data directory, if it resides outside Nextclouds directory
-#  See README.md for backup instructions
-#
 ###############################################
 
 
@@ -26,13 +21,13 @@ compression_method="tar.gz"
 
 
 # according to the documentation the webserver needs to be stopped and
-# restarted when upgrading. However there might be cases where this
+# restarted when upgrading. However, there might be cases where this
 # is not possible due to the resulting downtime of other webservices.
 # Choose "no" if you do not want to stop the webserver:
 stop_webserver="yes"
 
 
-# if you want to stop and start your webserver as recommended by the
+# if you want to stop and start your webserver as recommended in the
 # documentation, the script needs to know the servicename for your
 # webserver to stop and start it with command systemctl.
 # Servicename of used webserver (nginx, apache2.service, httpd.service):

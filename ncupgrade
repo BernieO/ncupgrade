@@ -24,13 +24,8 @@ print_header() {
 
   echo "+++++++++++++++++++++++++++++++++++++"
   echo "+"
-  echo "+  This script will upgrade your Nextcloud installation."
+  echo "+  This script will back up and upgrade your Nextcloud installation."
   echo "+  Use at own risk!"
-  echo "+"
-  echo "+  ATTENTION BEFORE PROCEEDING:"
-  echo "+    - back up your database!"
-  echo "+    - back up Nextclouds data directory, if it is located outside of Nextclouds directory!"
-  echo "+  See README.md for instructions how to back up."
   echo "+"
 }
 
@@ -242,7 +237,7 @@ backup_data_dir() {
   # check whether data directory is located inside nextcloud directory:
   regex="^${nextcloud_dir}*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
-    echo "+  no need to back up data directory (located inside Nextcloud directory which will be backed up later anyway)"
+    echo "+  data directory is located inside Nextcloud directory"
   else
     printf "%s" "+  backing up data directory (located outside of Nextcloud folder)... "
     # compress data directory and store it in backup directory:
@@ -396,10 +391,13 @@ print_footer() {
   echo "+"
   echo "+  Don't forget to check output of nextclouds upgrade script for errors!"
   echo "+"
-  echo "+  If there were any errors: use the backup to restore your previous installation:"
-  echo "+  backed up folder of your previous installation is here: ${nextcloud_dir}_${now}"
-  echo "+  and have a look at:"
+  echo "+  If there were any errors - have a look at the troubleshooting guide:"
   echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#troubleshooting"
+  echo "+"
+  echo "+  If you need to restore your previous installation, follow this guide:"
+  echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/restore.rst"
+  echo "+  Find the backup of your previous installaation here:"
+  echo "+     --> ${backup_dir}/"
   echo "+"
   echo "+++++++++++++++++++++++++++++++++++++"
 }
