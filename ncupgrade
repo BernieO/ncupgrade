@@ -368,11 +368,16 @@ move_new_nextcloud() {
 copy_config_data() {
 # copies Nextclouds config.php and data directory (if nested in Nextclouds directory) to extracted archive (new Nextcloud directory)
 
+  local regex
+
   echo "+  copying config.php from old Nextcloud directory to new Nextcloud directory"
   cp -a "${nextcloud_dir}_${now}/config/config.php" "${nextcloud_dir}/config/"
 
-  # check whether data directory resides inside Nextcloud directory. If yes: copy data directory as well
-  if [[ -d "${nextcloud_dir}_${now}/data" ]]; then
+  # make sure we know the location of Nextclouds data directory:
+  [[ -z ${nc_data_dir:-} ]] && nc_data_dir="$(get_nc_config_value "datadirectory")"
+  # check whether data directory is located inside nextcloud directory - if yes, copy it to new Nextcloud:
+  regex="^${nextcloud_dir}*"
+  if [[ "${nc_data_dir}" =~ ${regex} ]]; then
     printf "%s" "+  copying datafolder (resides inside nextclouds directory) to new Nextcloud..."
     cp -a "${nextcloud_dir}_${now}/data" "${nextcloud-dir}/"
     printf "%s\n" " done!"
@@ -416,7 +421,7 @@ ask_for_version
 read_configfile
 maintenance_mode "on"
 create_temp_dir
-create_backup
+#create_backup
 download_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
