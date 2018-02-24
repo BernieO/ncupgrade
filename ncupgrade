@@ -97,6 +97,12 @@ read_configfile() {
   fi
 }
 
+locate_data_dir() {
+# retrieves location of Nextclouds data directory (we need to know that for eventually copying it to new Nextcloud directory)
+
+  nc_data_dir="$(get_nc_config_value "datadirectory")"
+}
+
 maintenance_mode() {
 # enables or disables Nextclouds maintenance mode (depending on $1: on|off)
 
@@ -262,9 +268,6 @@ create_backup() {
   # create backup directory (in case it does not exist yet):
   mkdir -p "${backup_dir}"
 
-  # make sure we know the location of Nextclouds data directory:
-  [[ -z ${nc_data_dir:-} ]] && nc_data_dir="$(get_nc_config_value "datadirectory")"
-
   # Maintenance mode is already enabled at this stage of this script
 
   # Backup folders:
@@ -329,16 +332,6 @@ download_nextcloud() {
   extract_archive
 }
 
-adjust_permissions() {
-# adjusts permissions for extracted archive (new Nextcloud directory)
-
-  printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
-  chown -R ${htuser}:${htgroup} nextcloud
-  find nextcloud/ -type d -exec chmod 750 {} \;
-  find nextcloud/ -type f -exec chmod 640 {} \;
-  printf "%s\n" " done!"
-}
-
 start_stop_webserver() {
 # starts or stops webserver (depending on $1: start|stop)
 
@@ -373,15 +366,23 @@ copy_config_data() {
   echo "+  copying config.php from old Nextcloud directory to new Nextcloud directory"
   cp -a "${nextcloud_dir}_${now}/config/config.php" "${nextcloud_dir}/config/"
 
-  # make sure we know the location of Nextclouds data directory:
-  [[ -z ${nc_data_dir:-} ]] && nc_data_dir="$(get_nc_config_value "datadirectory")"
   # check whether data directory is located inside nextcloud directory - if yes, copy it to new Nextcloud:
   regex="^${nextcloud_dir}*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
     printf "%s" "+  copying datafolder (resides inside nextclouds directory) to new Nextcloud..."
-    cp -a "${nextcloud_dir}_${now}/data" "${nextcloud-dir}/"
+    cp -a "${nextcloud_dir}_${now}/data" "${nextcloud_dir}/"
     printf "%s\n" " done!"
   fi
+}
+
+adjust_permissions() {
+# adjusts permissions for Nextcloud directory
+
+  printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
+  chown -R ${htuser}:${htgroup} "${nextcloud_dir}"
+  find "${nextcloud_dir/}" -type d -exec chmod 750 {} \;
+  find "${nextcloud_dir/}" -type f -exec chmod 640 {} \;
+  printf "%s\n" " done!"
 }
 
 upgrade_nextcloud() {
@@ -419,9 +420,10 @@ print_footer() {
 print_header
 ask_for_version
 read_configfile
+locate_data_dir
 maintenance_mode "on"
 create_temp_dir
-#create_backup
+create_backup
 download_nextcloud
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
