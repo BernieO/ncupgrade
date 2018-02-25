@@ -379,9 +379,28 @@ copy_data() {
   fi
 }
 
-# todo:
-#copy_3rd_party_apps() {
-#}
+copy_3rd_party_apps() {
+# check for missing 3rd party applications that are not present in new Nextcloud
+# and copy them from old Nextcloud folder to new Nextcloud folder
+
+  local i count
+
+  printf "%s\n" "+  looking for missing 3rd party applications in new Nextcloud directory:"
+  count=0
+  # go through apps directory from old Nextcloud, check if present in new Nextcloud and copy if not:
+  for i in ${nextcloud_dir}_${now}/apps/*; do
+    # make sure we are talking about a directory here:
+    if [[ -d "$i" ]]; then
+      # copy app to new Nextcloud, if not present in new Nextcloud/app directory:
+      if [[ ! -d "${nextcloud_dir}/apps/${i##*/}" ]]; then
+        printf "%s\n" "+      copying ${i##*/}"
+        cp -a "$i" "${nextcloud_dir}/apps/"
+        (( count++ ))
+      fi
+    fi
+  done
+  [[ ${count} == 0 ]] && printf "%s\n" "+  no missing 3rd party applications in new Nextcloud directory found."
+}
 
 adjust_permissions() {
 # adjusts permissions for Nextcloud directory
@@ -438,7 +457,7 @@ rename_old_nextcloud
 move_new_nextcloud
 copy_config
 copy_data
-#copy_3rd_party_apps
+copy_3rd_party_apps
 adjust_permissions
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
