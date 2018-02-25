@@ -446,8 +446,10 @@ upgrade_nextcloud() {
 }
 
 clean_up() {
-# cleans up:
+# cleans up the mess
 
+  echo "+  removing old Nextcloud directory (don't panic - you have a backup)"
+  rm -r "${nextcloud_dir}_${now}"
   echo "+  removing temporary directory"
   rm -r /tmp/ncupgrade
 }
