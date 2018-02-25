@@ -380,8 +380,9 @@ copy_data() {
 }
 
 copy_3rd_party_apps() {
-# check for missing 3rd party applications that are not present in new Nextcloud
-# and copy them from old Nextcloud folder to new Nextcloud folder
+# check old Nextcloud directory for 3rd party applications that are missing in new Nextcloud directory
+# and copy missing ones from old Nextcloud directory to new Nextcloud directory
+# this is exactly the same function as copy_themes() below, but with using apps directory (instead of themes directory)
 
   local i count
 
@@ -391,15 +392,39 @@ copy_3rd_party_apps() {
   for i in ${nextcloud_dir}_${now}/apps/*; do
     # make sure we are talking about a directory here:
     if [[ -d "$i" ]]; then
-      # copy app to new Nextcloud, if not present in new Nextcloud/app directory:
+      # copy app to new Nextcloud, if not present in new Nextcloud/apps directory:
       if [[ ! -d "${nextcloud_dir}/apps/${i##*/}" ]]; then
-        printf "%s\n" "+      copying ${i##*/}"
+        printf "%s\n" "+      copying app ${i##*/}"
         cp -a "$i" "${nextcloud_dir}/apps/"
         (( count++ ))
       fi
     fi
   done
-  [[ ${count} == 0 ]] && printf "%s\n" "+  no missing 3rd party applications in new Nextcloud directory found."
+  [[ ${count} == 0 ]] && printf "%s\n" "+  no missing applications in new Nextcloud directory found."
+}
+
+copy_themes() {
+# check old Nextcloud directory for (user created) themes that are missing in new Nextcloud directory
+# and copy missing ones from old Nextcloud directory to new Nextcloud directory
+# this is exactly the same function as copy_3rd_party_apps() above, but with using themes directory (instead of apps directory)
+
+  local i count
+
+  printf "%s\n" "+  looking for missing themes in new Nextcloud directory:"
+  count=0
+  # go through themes directory from old Nextcloud, check if present in new Nextcloud and copy if not:
+  for i in ${nextcloud_dir}_${now}/themes/*; do
+    # make sure we are talking about a directory here:
+    if [[ -d "$i" ]]; then
+      # copy theme to new Nextcloud, if not present in new Nextcloud/themes directory:
+      if [[ ! -d "${nextcloud_dir}/themes/${i##*/}" ]]; then
+        printf "%s\n" "+      copying theme ${i##*/}"
+        cp -a "$i" "${nextcloud_dir}/themes/"
+        (( count++ ))
+      fi
+    fi
+  done
+  [[ ${count} == 0 ]] && printf "%s\n" "+  no missing themes in new Nextcloud directory found."
 }
 
 adjust_permissions() {
@@ -458,6 +483,7 @@ move_new_nextcloud
 copy_config
 copy_data
 copy_3rd_party_apps
+copy_themes
 adjust_permissions
 [[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
 upgrade_nextcloud
