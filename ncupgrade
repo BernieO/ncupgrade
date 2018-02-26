@@ -477,8 +477,8 @@ print_footer() {
 }
 
 print_header
-ask_for_version
 read_configfile
+ask_for_version
 locate_data_dir
 maintenance_mode "on"
 create_temp_dir
