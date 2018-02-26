@@ -32,21 +32,25 @@ print_header() {
 ask_for_version() {
 # asks for version Nextcloud shall be upgraded to, makes sure a valid value is entered and assigns archive name for download
 
+  local regex sure
+
   echo "+  To which version do you want to upgrade your Nextcloud?"
   echo "+  Please enter (X needs to be a digit):"
-  echo "+    - either version string XX.X.X (e.g. '13.0.0')"
+  echo "+    - either 'latest' to upgrade to latest available version"
   echo "+    - or 'latest-XX' to upgrade to latest available version of main version XX"
-  echo "+    - or 'latest' to upgrade to latest available version"
 
-  # regex allows only "XX.X.XX", "latest" or "latest-XX" (X must be a digit):
-  regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
+  # regex allows only "latest" or "latest-XX" (X must be a digit):
+  regex='^latest(-[[:digit:]]{1,2})?$'
+  # undocumented setting:
+  # add 'allow_version_number="yes"' in ncupgrade.conf to allow entering an exact version number like XX.X.XX (e.g. '13.0.0') for testing purposes:
+  [[ "${allow_version_number}" == "yes" ]] && regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
 
   # ask for version to be upgraded to (and repeat if no valid value was entered):
   while [[ -z "${upgrade_to_version:-}" ]]; do
     read -r -p "+  Upgrade to version: " upgrade_to_version
     if [[ ! "${upgrade_to_version}" =~ ${regex} ]]; then
       echo "-- ERROR: not a valid value! Try again."
-      echo "+  either enter version number (e.g. '13.0.0'), 'latest-XX' or 'latest'"
+      echo "+  either enter 'latest' or 'latest-XX'"
       unset upgrade_to_version
     else
       # if valid value was entered - ask for confirmation, to make sure there is no typo:
