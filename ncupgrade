@@ -29,6 +29,29 @@ print_header() {
   echo "+"
 }
 
+set_php_command() {
+# sets the command for executing the occ command depending if user root or webserveruser
+
+  local my_identity dir_list
+
+  my_identity="$(whoami)"
+  if [[ "${my_identity}" == "root" ]]; then
+    # I am root, so use sudo to execute occ:
+    php_command="sudo -u ${htuser}"
+  else
+    # I am not root, so check, whether config.php belongs to me (check whether my_identity is present in ls -l config.php):
+    dir_list="$(ls -l "${nextcloud_dir}/config/config.php" 2>/dev/null)"
+    if [[ "${dir_list}" =~ ${my_identity} ]]; then
+      # config.php belongs to me, so I seem to be the webserver user. I don't need any extra command to execute occ:
+      php_command=""
+    else
+      # if I am neither root nor webserver user this script won't work - print error and exit:
+      echo "-- ERROR: this script needs to be run either as root or as webserver user. Exiting"
+      exit 1
+    fi
+  fi
+}
+
 ask_for_version() {
 # asks for version Nextcloud shall be upgraded to, makes sure a valid value is entered and assigns archive name for download
 
@@ -115,7 +138,24 @@ maintenance_mode() {
   [[ "${1}" == "on" ]] && text="enabl"
   [[ "${1}" == "off" ]] && text="disabl"
   printf "%s" "+  ${text}ing Nextclouds maintenance mode... "
-  sudo -u ${htuser} php "${nextcloud_dir}/occ" --no-warnings maintenance:mode --${1}
+  ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:mode --${1}
+}
+
+check_write_permission() {
+# checks whether I am able to write in given directory
+# arguments: $1 - directory to check for write permission
+#            $2 - explanation of directory
+
+  # check whether I am able to write into directory:
+  touch "${1}/testfile" 2>/dev/null
+  if [[ "$?" == "1" ]]; then
+    # I can't write in directory - error and exit:
+    echo "-- ERROR: I am not allowed to write in ${2}. Exiting"
+    exit 1
+  else
+    # I can write in directory - delete testfile:
+    rm "${1}/testfile"
+  fi
 }
 
 create_temp_dir() {
@@ -129,7 +169,13 @@ create_temp_dir() {
   # store temp-directory in variable:
   temp_dir="/tmp/ncupgrade"
 
-  mkdir -p "${temp_dir}"
+  # create temp directory:
+  mkdir -p "${temp_dir}" 2>/dev/null
+
+  # check for write permission
+  check_write_permission "${temp_dir}" "temporary directory"
+
+  # change to temporary directory (to have shorter download commands later)
   cd "${temp_dir}"
 
   # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
@@ -141,7 +187,7 @@ get_nc_config_value() {
 
   local value
 
-  value="$(sudo -u ${htuser} php "${nextcloud_dir}/occ" --no-warnings config:system:get ${1})"
+  value="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings config:system:get ${1})"
   echo "${value}"
 }
 
@@ -270,8 +316,11 @@ create_backup() {
 # creates backup of Nextcloud installation based on official documentation:
 # https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst
 
-  # create backup directory (in case it does not exist yet):
-  mkdir -p "${backup_dir}"
+  # create backup directory (in case it does not exist yet), suppress error message. write test follows:
+  mkdir -p "${backup_dir}" 2>/dev/null
+
+  # check for write permission in backup directory:
+  check_write_permission "${backup_dir}" "backup directory"
 
   # Maintenance mode is already enabled at this stage of this script
 
@@ -311,13 +360,19 @@ verify_signature() {
   printf "%s" "+  verifying PGP signature of downloaded archive..."
   curl -sS -O "https://nextcloud.com/nextcloud.asc"
   gpg --import nextcloud.asc > /dev/null 2>&1
-  gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
-  # error and exit, if signature verification failed:
-  if [[ $? != 0 ]]; then
-    printf "\n%s\n" "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt. Exiting"
-    exit 1
+  # in case nextcloud.asc could not be imported to the keyring (missing permissions), don't verify signature:
+  if [[ "$?" != "0" ]]; then
+    printf "\n%s\n" "-- NOTICE: can't import key. Verifying signature not possible."
+    echo "-- Proceeding without signature verification."
+  else
+    gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
+    # error and exit, if signature verification failed:
+    if [[ $? != 0 ]]; then
+      printf "\n%s\n" "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt. Exiting"
+      exit 1
+    fi
+    printf "%s\n" " PGP signature valid!"
   fi
-  printf "%s\n" " PGP signature valid!"
 }
 
 extract_archive() {
@@ -350,6 +405,9 @@ start_stop_webserver() {
 
 rename_old_nextcloud() {
 # adds current date and time to old Nextcloud folder to keep it as backup
+
+  # first check whether we have write permissions for parent directory of nextclouds directory:
+  check_write_permission "${nextcloud_dir%/*}" "Nextclouds parent directory"
 
   echo "+  renaming old Nextcloud folder (adding current date and time to foldername)"
   mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
@@ -446,7 +504,7 @@ upgrade_nextcloud() {
 # launches Nextclouds occ upgrade script
 
   echo "+  launching the upgrade from the command line using 'occ':"
-  sudo -u ${htuser} php "${nextcloud_dir}/occ" upgrade
+  ${php_command} php "${nextcloud_dir}/occ" upgrade
 }
 
 clean_up() {
@@ -478,6 +536,7 @@ print_footer() {
 
 print_header
 read_configfile
+set_php_command
 ask_for_version
 locate_data_dir
 maintenance_mode "on"
