@@ -107,6 +107,20 @@ ask_for_version() {
   fi
 }
 
+remove_trailing_slashes() {
+# removes trailing slashes from given path/url
+
+# arguments: $1 - path/url with possibly trailing slashes
+
+  local path
+
+  path="${1}"
+  while [[ "${path}" =~ /$ ]]; do
+    path="${path%/}"
+  done
+  echo "${path}"
+}
+
 read_configfile() {
 # reads ncupgrades configfile ncupgrade.conf
 
@@ -122,6 +136,10 @@ read_configfile() {
     echo "-- See examples/ncupgrade.conf.example - Exiting."
     exit 1
   fi
+
+  # remove trailing slashes from $nextcloud_dir and $backup_dir:
+  nextcloud_dir="$(remove_trailing_slashes "${nextcloud_dir}")"
+  backup_dir="$(remove_trailing_slashes "${backup_dir}")"
 }
 
 locate_data_dir() {
