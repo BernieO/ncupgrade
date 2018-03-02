@@ -13,7 +13,7 @@ nextcloud_dir="/usr/share/nginx/nextcloud"
 
 
 # directory to store backups:
-backup_dir="./ncupgrade_backups"
+backup_dir="ncupgrade_backups"
 
 
 # choose how to compress backup ("tar.gz" or "zip")
