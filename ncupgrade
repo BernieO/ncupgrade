@@ -60,7 +60,7 @@ set_php_command() {
       php_command=""
     else
       # if I am neither root nor webserver user this script won't work - print error and exit:
-      error_exit "-- ERROR: this script needs to be run either as root or as webserver user."
+      error_exit "ERROR: this script needs to be run either as root or as webserver user."
     fi
   fi
 }
@@ -99,7 +99,7 @@ ask_for_version() {
           }
           [[ ${sure} = [Nn] ]] && {
             # if not confirmed (N or n) error and exit:
-            error_exit "-- ERROR: upgrade to ${upgrade_to_version} not confirmed."
+            error_exit "ERROR: upgrade to ${upgrade_to_version} not confirmed."
           }
         else
           # if not a valid value was entered - print newline and repeat while loop:
@@ -143,7 +143,7 @@ read_configfile() {
     . ncupgrade.conf
   else
     # if no configuration file next to this script error and exit:
-    error_exit "-- ERROR: Configuration file ncupgrade.conf not found." "-- This file needs to be in the same directory as this script." "-- See examples/ncupgrade.conf.example."
+    error_exit "ERROR: Configuration file ncupgrade.conf not found." "This file needs to be in the same directory as this script." "See examples/ncupgrade.conf.example."
   fi
 
   # remove trailing slashes from $nextcloud_dir and $backup_dir:
@@ -177,7 +177,7 @@ check_write_permission() {
   touch "${1}/testfile" 2>/dev/null
   if [[ "$?" == "1" ]]; then
     # I can't write in directory - error and exit:
-    error_exit "-- ERROR: I am not allowed to write in ${2}."
+    error_exit "ERROR: I am not allowed to write in ${2}."
   else
     # I can write in directory - delete testfile:
     rm "${1}/testfile"
@@ -246,7 +246,7 @@ compress_backup() {
     [[ $? -eq 0 ]] || compress_error="1"
   fi
   # print error message, if an error occured
-  [[ "${compress_error}" == "1" ]] && error_exit " " "-- ERROR: Compressing the files produced an error. See lines right above."
+  [[ "${compress_error}" == "1" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
 
   # change back to original directory:
   cd "${original_dir}"
@@ -375,7 +375,7 @@ verify_checksum() {
   sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
   # error and exit, if checksum test failed:
   if [[ $? != 0 ]]; then
-    error_exit " " "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt."
+    error_exit "ERROR: checksum test failed. Downloaded archive seems to be corrupt."
   fi
 }
 
@@ -393,7 +393,7 @@ verify_signature() {
     gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
     # error and exit, if signature verification failed:
     if [[ $? != 0 ]]; then
-      error_exit " " "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt."
+      error_exit " " "ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt."
     fi
     printf "%s\n" " PGP signature valid!"
   fi
