@@ -65,6 +65,15 @@ set_php_command() {
   fi
 }
 
+check_working_occ() {
+# checks whether a call for occ is working
+
+  # run occ command quietly:
+  ${php_command} php "${nextcloud_dir}/occ" --no-warnings -q -V
+  # if php returned an error, we need to exit:
+  [[ "$?" != "0" ]] && error_exit "ERROR: testing the occ command returned an error. Can't proceed!"
+}
+
 ask_for_version() {
 # asks for version Nextcloud shall be upgraded to, makes sure a valid value is entered and assigns archive name for download
 
@@ -566,6 +575,7 @@ print_footer() {
 print_header
 read_configfile
 set_php_command
+check_working_occ
 ask_for_version
 locate_data_dir
 maintenance_mode "on"
