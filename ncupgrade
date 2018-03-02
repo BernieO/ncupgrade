@@ -77,16 +77,16 @@ ask_for_version() {
       unset upgrade_to_version
     else
       # if valid value was entered - ask for confirmation, to make sure there is no typo:
-      while read -r -n 1 -p "+  Confirm upgrade to version '${upgrade_to_version}' (Y/N): " sure; do
+      while read -r -n 2 -p "+  Confirm upgrade to version '${upgrade_to_version}' (y/n): " sure; do
         if [[ ${sure} = [YyNn] ]]; then
           [[ ${sure} = [Yy] ]] && {
             # if confirmed (Y or y): exit the while loop and proceed:
-            printf "\n%s\n" "+  Confirmed. Starting upgrade"
+            printf "%s\n" "+  Confirmed. Starting upgrade"
             break
           }
           [[ ${sure} = [Nn] ]] && {
             # if not confirmed (N or n) error and exit:
-            printf "\n%s\n" "-- ERROR: upgrade to ${upgrade_to_version} not confirmed. Exiting"
+            printf "%s\n" "-- ERROR: upgrade to ${upgrade_to_version} not confirmed. Exiting"
             exit 1
           }
         else
