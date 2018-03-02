@@ -415,10 +415,15 @@ start_stop_webserver() {
 
   local text
 
-  [[ "${1}" == "start" ]] && text="start"
-  [[ "${1}" == "stop" ]] && text="stopp"
-  echo "+  ${text}ing webserver"
-  systemctl ${1} ${webserver_service}
+  # only issue systemctl command if we are root. This is the case if $php_command is not empty:
+  if [[ -n "${php_command}" ]]; then
+    [[ "${1}" == "start" ]] && text="start"
+    [[ "${1}" == "stop" ]] && text="stopp"
+    echo "+  ${text}ing webserver"
+    systemctl ${1} ${webserver_service}
+  else
+    echo "-- NOTICE: can't ${1} webserver, because not running as root."
+  fi
 }
 
 rename_old_nextcloud() {
