@@ -19,6 +19,20 @@
 #######################################################
 #######################################################
 
+error_exit() {
+# prints error message and exits script
+# if any arguments are passed, they all will be printed as error message
+
+  # print all arguments that have been passed to this function as error message:
+  for message in "$@"; do
+    echo "-- ${message}" >&2
+  done
+  echo "-- ncupgrade: Exiting." >&2
+
+  # exit with error code 1
+  exit 1
+}
+
 print_header() {
 # prints a nice header with welcome message and advice to have a backup
 
@@ -46,8 +60,7 @@ set_php_command() {
       php_command=""
     else
       # if I am neither root nor webserver user this script won't work - print error and exit:
-      echo "-- ERROR: this script needs to be run either as root or as webserver user. Exiting"
-      exit 1
+      error_exit "-- ERROR: this script needs to be run either as root or as webserver user."
     fi
   fi
 }
@@ -72,7 +85,7 @@ ask_for_version() {
   while [[ -z "${upgrade_to_version:-}" ]]; do
     read -r -p "+  Upgrade to version: " upgrade_to_version
     if [[ ! "${upgrade_to_version}" =~ ${regex} ]]; then
-      echo "-- ERROR: not a valid value! Try again."
+      echo "-- NOTICE: ${upgrade_to_version} is not a valid value! Try again."
       echo "+  either enter 'latest' or 'latest-XX'"
       unset upgrade_to_version
     else
@@ -86,8 +99,7 @@ ask_for_version() {
           }
           [[ ${sure} = [Nn] ]] && {
             # if not confirmed (N or n) error and exit:
-            printf "%s\n" "-- ERROR: upgrade to ${upgrade_to_version} not confirmed. Exiting"
-            exit 1
+            error_exit "-- ERROR: upgrade to ${upgrade_to_version} not confirmed."
           }
         else
           # if not a valid value was entered - print newline and repeat while loop:
@@ -131,10 +143,7 @@ read_configfile() {
     . ncupgrade.conf
   else
     # if no configuration file next to this script error and exit:
-    echo "-- ERROR: Configuration file ncupgrade.conf not found."
-    echo "-- This file needs to be in the same directory as this script."
-    echo "-- See examples/ncupgrade.conf.example - Exiting."
-    exit 1
+    error_exit "-- ERROR: Configuration file ncupgrade.conf not found." "-- This file needs to be in the same directory as this script." "-- See examples/ncupgrade.conf.example."
   fi
 
   # remove trailing slashes from $nextcloud_dir and $backup_dir:
@@ -168,8 +177,7 @@ check_write_permission() {
   touch "${1}/testfile" 2>/dev/null
   if [[ "$?" == "1" ]]; then
     # I can't write in directory - error and exit:
-    echo "-- ERROR: I am not allowed to write in ${2}. Exiting"
-    exit 1
+    error_exit "-- ERROR: I am not allowed to write in ${2}."
   else
     # I can write in directory - delete testfile:
     rm "${1}/testfile"
@@ -238,7 +246,7 @@ compress_backup() {
     [[ $? -eq 0 ]] || compress_error="1"
   fi
   # print error message, if an error occured
-  [[ "${compress_error}" == "1" ]] && printf "\n%s\n" "-- ERROR: Compressing the files produced an error. See lines right above."
+  [[ "${compress_error}" == "1" ]] && error_exit " " "-- ERROR: Compressing the files produced an error. See lines right above."
 
   # change back to original directory:
   cd "${original_dir}"
@@ -367,8 +375,7 @@ verify_checksum() {
   sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
   # error and exit, if checksum test failed:
   if [[ $? != 0 ]]; then
-    printf "\n%s\n" "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt. Exiting"
-    exit 1
+    error_exit " " "-- ERROR: checksum test failed. Downloaded archive seems to be corrupt."
   fi
 }
 
@@ -386,8 +393,7 @@ verify_signature() {
     gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
     # error and exit, if signature verification failed:
     if [[ $? != 0 ]]; then
-      printf "\n%s\n" "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt. Exiting"
-      exit 1
+      error_exit " " "-- ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt."
     fi
     printf "%s\n" " PGP signature valid!"
   fi
