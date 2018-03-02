@@ -565,8 +565,8 @@ adjust_permissions() {
 
   printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
   chown -R ${htuser}:${htgroup} "${nextcloud_dir}"
-  find "${nextcloud_dir/}" -type d -exec chmod 750 {} \;
-  find "${nextcloud_dir/}" -type f -exec chmod 640 {} \;
+  find "${nextcloud_dir}/" -type d -exec chmod 750 {} \;
+  find "${nextcloud_dir}/" -type f -exec chmod 640 {} \;
   printf "%s\n" " done!"
 }
 
