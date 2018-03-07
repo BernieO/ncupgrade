@@ -24,6 +24,10 @@ set -euo pipefail
 # for debugging purposes:
 # set -x
 
+###
+### BEGIN: FUNCTION DEFINITIONS
+###
+
 error_exit() {
 # prints error message and exits script
 # if any arguments are passed, they all will be printed as error message
@@ -74,6 +78,7 @@ set_php_command() {
       error_exit "ERROR: this script needs to be run either as root or as webserver user."
     fi
   fi
+  echo "+  running as '${my_identity}'"
 }
 
 check_working_occ() {
@@ -95,72 +100,92 @@ check_working_occ() {
 check_available_version() {
 # checks https://download.nextcloud.com/server/releases/ for latest available version of main version XX
 
-  local all_releases regex line
+  local all_releases regex_current regex_next line
+
+  # find out what would be the next major release:
+  nc_version_next="${nc_version%%.*}"
+  nc_version_next=$((nc_version_next+1))
+
+  # regex for current version:
+  regex_current="nextcloud-${nc_version%%.*}\..\..{1,2}\.tar\.bz2"
+  # regex for next major version:
+  regex_next="nextcloud-${nc_version_next}\..\..{1,2}\.tar\.bz2"
 
   # download and store website with all releases in variable all_releases:
   all_releases="$(curl -sS "https://download.nextcloud.com/server/releases/")"
-  regex="nextcloud-${nc_version%%.*}\..\..\.tar\.bz2$"
+
   while read line; do
-    # store line that contains main version number of installed Nextcloud. Last result will be latest available version:
-    [[ "${line}" =~ ${regex} ]] && {
-      latest_available_version="${line##*nextcloud-}"
-      latest_available_version="${latest_available_version%%.tar.bz2*}"
+    [[ "${line}" =~ ${regex_current} ]] && {
+      # store line that contains main version number of installed Nextcloud. Last result will be latest available version:
+      latest_available_current="${line##*nextcloud-}"
+    }
+    [[ "${line}" =~ ${regex_next} ]] && {
+      # store line that contains next main version number of installed  Nextcloud. Last result will be latest available version:
+      latest_available_next="${line##*nextcloud-}"
     }
   done <<<"$(echo "${all_releases}")"
+
+  # remove end of line to get version number of latest available point release of currently installed version:
+  latest_available_current="${latest_available_current%%.tar.bz2*}"
+
+  if [[ "${latest_available_current}" == "${nc_version}" ]]; then
+    # latest available point release of currently installed version is already installed. Check whether next major version is available:
+    if [[ -n ${latest_available_next:-} ]]; then
+      latest_available_next="${latest_available_next%%.tar.bz2*}"
+    fi
+  fi
 }
 
-ask_for_version() {
-# asks for version Nextcloud shall be upgraded to, makes sure a valid value is entered and assigns archive name for download
+confirm_upgrade() {
+# displays installed version and version to which the upgrade will be performed and asks for confirmation to upgrade
 
-  local regex sure
+  local sure
 
-  echo "+  To which version do you want to upgrade your Nextcloud (current version: ${nc_version})?"
-  echo "+  Please enter (X needs to be a digit):"
-  echo "+    - either 'latest' to upgrade to latest available version"
-  echo "+    - or 'latest-XX' to upgrade to latest available version of main version XX"
-
-  # regex allows only "latest" or "latest-XX" (X must be a digit):
-  regex='^latest(-[[:digit:]]{1,2})?$'
-  # undocumented setting:
-  # add 'allow_version_number="yes"' in ncupgrade.conf to allow entering an exact version number like XX.X.XX (e.g. '13.0.0') for testing purposes:
-  [[ "${allow_version_number}" == "yes" ]] && regex='^([[:digit:]]{1,2}\.[[:digit:]]{1}\.[[:digit:]]{1,2}|latest(-[[:digit:]]{1,2})?)$'
-
-  # ask for version to be upgraded to (and repeat if no valid value was entered):
-  while [[ -z "${upgrade_to_version:-}" ]]; do
-    read -r -p "+  Upgrade to version: " upgrade_to_version
-    if [[ ! "${upgrade_to_version}" =~ ${regex} ]]; then
-      echo "-- NOTICE: ${upgrade_to_version} is not a valid value! Try again."
-      echo "+  either enter 'latest' or 'latest-XX'"
-      unset upgrade_to_version
+  echo "+  Currently installed version is:   Nextcloud ${nc_version}"
+  if [[ "${latest_available_current}" != "${nc_version}" ]]; then
+    # there is a newer point release of currently installed version available on the download page:
+    echo "+  Latest available point release:   Nextcloud ${latest_available_current}"
+    upgrade_to_version="${latest_available_current}"
+    unset latest_available_current
+  else
+    # the currently installed version is already the latest point release:
+    echo "+  Version ${nc_version} is the latest available point release of Nextcloud ${nc_version%%.*}"
+    if [[ -n ${latest_available_next:-} ]]; then
+      # the next major version is available on the download page:
+      echo "+  However the next major release is available:   Nextcloud ${latest_available_next}"
+      upgrade_to_version="${latest_available_next}"
+      unset latest_available_next
     else
-      # if valid value was entered - ask for confirmation, to make sure there is no typo:
-      while read -r -n 2 -p "+  Confirm upgrade to version '${upgrade_to_version}' (y/n): " sure; do
-        if [[ ${sure} = [YyNn] ]]; then
-          [[ ${sure} = [Yy] ]] && {
-            # if confirmed (Y or y): exit the while loop and proceed:
-            printf "%s\n" "+  Confirmed. Starting upgrade"
-            break
-          }
-          [[ ${sure} = [Nn] ]] && {
-            # if not confirmed (N or n) error and exit:
-            error_exit "ERROR: upgrade to ${upgrade_to_version} not confirmed."
-          }
-        else
-          # if not a valid value was entered - print newline and repeat while loop:
-          printf "\n"
-        fi
-      done
+      # there is no upgrade available for the currently installed Nextcloud server:
+      echo "+  Looks like the next major version (Nextcloud ${nc_version_next}) is not released yet."
+      echo "+  There is no upgrade available for your Nextcloud server."
+      echo "+  Exiting."
+      echo "+"
+      echo "+++++++++++++++++++++++++++++++++++++"
+      exit 0
+    fi
+  fi
+
+  # ask for confirmation:
+  while read -r -n 2 -p "+  Confirm upgrade to version '${upgrade_to_version}' (y/n): " sure; do
+    if [[ ${sure} = [YyNn] ]]; then
+      [[ ${sure} = [Yy] ]] && {
+        # if confirmed (Y or y): exit the while loop and proceed:
+        printf "%s\n" "+  Confirmed. Starting upgrade"
+        break
+      }
+      [[ ${sure} = [Nn] ]] && {
+        # if not confirmed (N or n) error and exit:
+        error_exit "ERROR: upgrade to ${upgrade_to_version} not confirmed."
+      }
+    else
+      # if not a valid value was entered - print newline and repeat while loop:
+      printf "\n"
     fi
   done
 
   # assign archive name according to entered version (using tar.bz2, because zip doesn't contain permissions):
-  if [[ "${upgrade_to_version}" =~ latest ]]; then
-    # if 'latest' or 'latest-XX' was given it is enough to append '.tar.bz2':
-    nextcloud_archive="${upgrade_to_version}.tar.bz2"
-  else
-    # if version number was given, archive is named nextcloud-XX.X.XX.tar.bz2:
-    nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
-  fi
+  nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
 }
 
 remove_trailing_slashes() {
@@ -241,15 +266,11 @@ check_write_permission() {
 # arguments: $1 - directory to check for write permission
 #            $2 - explanation of directory
 
-  # check whether I am able to write into directory:
-  touch "${1}/testfile" 2>/dev/null
-  if [[ "$?" == "1" ]]; then
-    # I can't write in directory - error and exit:
-    error_exit "ERROR: I am not allowed to write in ${2}."
-  else
-    # I can write in directory - delete testfile:
-    rm "${1}/testfile"
-  fi
+  # check whether I am able to write into directory - error and exit if not:
+  touch "${1}/testfile" || error_exit "ERROR: I am not allowed to write in ${2}."
+
+  # I can write in directory - delete testfile:
+  rm "${1}/testfile"
 }
 
 create_temp_dir() {
@@ -264,7 +285,7 @@ create_temp_dir() {
   temp_dir="/tmp/ncupgrade"
 
   # create temp directory:
-  mkdir -p "${temp_dir}" 2>/dev/null
+  mkdir -p "${temp_dir}" || error_exit "ERROR: can't create temporary directory '${temp_dir}'"
 
   # check for write permission
   check_write_permission "${temp_dir}" "temporary directory"
@@ -419,7 +440,7 @@ create_backup() {
 # https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst
 
   # create backup directory (in case it does not exist yet), suppress error message. write test follows:
-  mkdir -p "${backup_dir}" 2>/dev/null
+  mkdir -p "${backup_dir}" || error_exit "ERROR: can't create backup directory '${backup_dir}'"
 
   # check for write permission in backup directory:
   check_write_permission "${backup_dir}" "backup directory"
@@ -448,11 +469,9 @@ verify_checksum() {
 # verifies SHA512 checksum of archive
 
   printf "%s" "+  verifying SHA512 checksum of downloaded archive... "
-  sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}"
-  # error and exit, if checksum test failed:
-  if [[ $? != 0 ]]; then
-    error_exit "ERROR: checksum test failed. Downloaded archive seems to be corrupt."
-  fi
+
+  # verify checksum - and error and exit, if checksum test failed:
+  sha512sum -c "${nextcloud_archive}.sha512" < "${nextcloud_archive}" || error_exit "ERROR: checksum test failed. Downloaded archive seems to be corrupt."
 }
 
 verify_signature() {
@@ -460,19 +479,15 @@ verify_signature() {
 
   printf "%s" "+  verifying PGP signature of downloaded archive..."
   curl -sS -O "https://nextcloud.com/nextcloud.asc"
-  gpg --import nextcloud.asc > /dev/null 2>&1
-  # in case nextcloud.asc could not be imported to the keyring (missing permissions), don't verify signature:
-  if [[ "$?" != "0" ]]; then
-    printf "\n%s\n" "-- NOTICE: can't import key. Verifying signature not possible."
-    echo "-- Proceeding without signature verification."
-  else
-    gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1
-    # error and exit, if signature verification failed:
-    if [[ $? != 0 ]]; then
-      error_exit " " "ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt."
-    fi
-    printf "%s\n" " PGP signature valid!"
-  fi
+
+  # import key - error and exit if not possible (missing permissions) error and exit:
+  gpg --import nextcloud.asc > /dev/null 2>&1 || error_exit "ERROR: can't import Nextclouds PGP key. Verifying signature not possible."
+
+  # verify signature - and error and exit, if signature verification failed:
+  gpg --verify "${nextcloud_archive}.asc" "${nextcloud_archive}" > /dev/null 2>&1 || error_exit "ERROR: PGP signature verification failed. Downloaded archive seems to be corrupt."
+
+  # if this script is still running the signature verification was positive
+  printf "%s\n" " PGP signature valid!"
 }
 
 extract_archive() {
@@ -639,13 +654,17 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+###
+### END: FUNCTION DEFINITIONS
+###
+
 print_header
 read_configfile
 set_webserver_user
 set_php_command
 check_working_occ
 check_available_version
-ask_for_version
+confirm_upgrade
 locate_data_dir
 maintenance_mode "on"
 create_temp_dir
