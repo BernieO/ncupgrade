@@ -19,6 +19,11 @@
 #######################################################
 #######################################################
 
+set -euo pipefail
+
+# for debugging purposes:
+# set -x
+
 error_exit() {
 # prints error message and exits script
 # if any arguments are passed, they all will be printed as error message
@@ -43,6 +48,13 @@ print_header() {
   echo "+"
 }
 
+set_webserver_user() {
+# assings webserver user/group depending on owner of Nextclouds config.php
+
+  htuser="$(stat --printf="%U" "${nextcloud_dir}/config/config.php")"
+  htgroup="$(stat --printf="%G" "${nextcloud_dir}/config/config.php")"
+}
+
 set_php_command() {
 # sets the command for executing the occ command depending if user root or webserveruser
 
@@ -53,10 +65,9 @@ set_php_command() {
     # I am root, so use sudo to execute occ:
     php_command="sudo -u ${htuser}"
   else
-    # I am not root, so check, whether config.php belongs to me (check whether my_identity is present in ls -l config.php):
-    dir_list="$(ls -l "${nextcloud_dir}/config/config.php" 2>/dev/null)"
-    if [[ "${dir_list}" =~ ${my_identity} ]]; then
-      # config.php belongs to me, so I seem to be the webserver user. I don't need any extra command to execute occ:
+    # I am not root, so check whether I am webserver user:
+    if [[ "${my_identity}" == "${htuser}" ]]; then
+      # I seem to be the webserver user, so I don't need any extra command to execute occ:
       php_command=""
     else
       # if I am neither root nor webserver user this script won't work - print error and exit:
@@ -71,14 +82,31 @@ check_working_occ() {
   local regex="^(Nextcloud|ownCloud)( version)? [[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}$"
 
   # run occ command quietly:
-  version="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings -V)"
+  nc_version="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings -V)"
   # check output against regex and if not matching - print $version (containing error message) and error exit:
-  [[ "${version}" =~ ${regex} ]] || {
-    echo "${version}"
+  [[ "${nc_version}" =~ ${regex} ]] || {
+    echo "${nc_version}"
     error_exit "ERROR: testing occ command returned an unexpected result. Can't proceed!"
   }
-  # store version number for proper naming of backup files:
-  nc_version="${version##* }"
+  # store version number for proper naming of backup files and comparing with download.nextcloud.com:
+  nc_version="${nc_version##* }"
+}
+
+check_available_version() {
+# checks https://download.nextcloud.com/server/releases/ for latest available version of main version XX
+
+  local all_releases regex line
+
+  # download and store website with all releases in variable all_releases:
+  all_releases="$(curl -sS "https://download.nextcloud.com/server/releases/")"
+  regex="nextcloud-${nc_version%%.*}\..\..\.tar\.bz2$"
+  while read line; do
+    # store line that contains main version number of installed Nextcloud. Last result will be latest available version:
+    [[ "${line}" =~ ${regex} ]] && {
+      latest_available_version="${line##*nextcloud-}"
+      latest_available_version="${latest_available_version%%.tar.bz2*}"
+    }
+  done <<<"$(echo "${all_releases}")"
 }
 
 ask_for_version() {
@@ -245,7 +273,7 @@ create_temp_dir() {
   cd "${temp_dir}"
 
   # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
-  rm -r * > /dev/null 2>&1
+  rm -rf *
 }
 
 get_nc_config_value() {
@@ -286,7 +314,7 @@ compress_backup() {
     [[ $? -eq 0 ]] || compress_error="1"
   fi
   # print error message, if an error occured
-  [[ "${compress_error}" == "1" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
+  [[ "${compress_error:-}" == "1" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
 
   # change back to original directory:
   cd "${original_dir}"
@@ -613,8 +641,10 @@ print_footer() {
 
 print_header
 read_configfile
+set_webserver_user
 set_php_command
 check_working_occ
+check_available_version
 ask_for_version
 locate_data_dir
 maintenance_mode "on"

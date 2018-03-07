@@ -32,9 +32,3 @@ stop_webserver="yes"
 # webserver to stop and start it with command systemctl.
 # Servicename of used webserver (nginx, apache2.service, httpd.service):
 webserver_service="nginx"
-
-
-# user and group of webserver (www-data, apache, http, wwwrun/www)
-# (see https://github.com/nextcloud/documentation/blob/master/admin_manual/configuration_server/occ_command.rst):
-htuser="www-data"
-htgroup="www-data"
