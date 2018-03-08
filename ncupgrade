@@ -52,6 +52,14 @@ print_header() {
   echo "+"
 }
 
+load_default_values() {
+# loads default values into variables:
+
+  backup_dir="nextcloud_backups"
+  compression_method="tar.gz"
+  stop_webserver="no"
+}
+
 set_webserver_user() {
 # assings webserver user/group depending on owner of Nextclouds config.php
 
@@ -188,20 +196,6 @@ confirm_upgrade() {
   nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
 }
 
-remove_trailing_slashes() {
-# removes trailing slashes from given path/url
-
-# arguments: $1 - path/url with possibly trailing slashes
-
-  local path
-
-  path="${1}"
-  while [[ "${path}" =~ /$ ]]; do
-    path="${path%/}"
-  done
-  echo "${path}"
-}
-
 get_absolute_path() {
   # returns the absolute path to a given filepath which may be absolute or relative to a directory.
   # this is only needed and used for paths given by user via config-file (because config-file could be in a different dir from working dir or script dir)
@@ -219,29 +213,6 @@ get_absolute_path() {
     [[ "${absolute_path}" == "" ]] && error_exit "ERROR: ${1}/${2} can't be canonicalized. Check given path in config-file!"
   fi
   echo "${absolute_path}"
-}
-
-read_configfile() {
-# reads ncupgrades configfile ncupgrade.conf
-
-  # check for existing ncupgrade onfig file:
-  if [[ -f ncupgrade.conf ]]; then
-    # read config file - this file needs to reside in the same directory as this script (see examples/ncupgrade.conf):
-    echo "+  reading configuration file ncupgrade.conf"
-    . ncupgrade.conf
-  else
-    # if no configuration file next to this script error and exit:
-    error_exit "ERROR: Configuration file ncupgrade.conf not found." "This file needs to be in the same directory as this script." "See examples/ncupgrade.conf.example."
-  fi
-
-  # remove trailing slashes from $nextcloud_dir and $backup_dir:
-  nextcloud_dir="$(remove_trailing_slashes "${nextcloud_dir}")"
-  backup_dir="$(remove_trailing_slashes "${backup_dir}")"
-
-  local original_dir="$(pwd)"
-
-  nextcloud_dir="$(get_absolute_path "${original_dir}" "${nextcloud_dir}")"
-  backup_dir="$(get_absolute_path "${original_dir}" "${backup_dir}")"
 }
 
 locate_data_dir() {
@@ -275,6 +246,9 @@ check_write_permission() {
 
 create_temp_dir() {
 # creates a temporary directory
+
+  # first make sure path to backup_dir is absolute (because we switch to temp-dir later):
+  backup_dir="$(get_absolute_path "$(pwd)" "${backup_dir}")"
 
   # create timestamp to append to backups:
   now=$(date +"%Y.%m.%d-%H.%M")
@@ -630,7 +604,7 @@ upgrade_nextcloud() {
 clean_up() {
 # cleans up the mess
 
-  echo "+  removing old Nextcloud directory (don't panic - you have a backup)"
+  echo "+  removing old Nextcloud directory"
   rm -r "${nextcloud_dir}_${now}"
   echo "+  removing temporary directory"
   rm -r /tmp/ncupgrade
@@ -654,12 +628,79 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+check_argument() {
+# checks for argument, if an option passed on command line needs an argument
+
+  # if option was last on command line and no argument is following:
+  [[ -n "${1:-}" ]] || error_exit "Option '${option}' requires an additional argument."
+  # if option was not last on command line, but an option (starting with a dash) is following instead of argument:
+  [[ "${1:0:1}" != "-" ]] || error_exit "Invalid argument for option '${option}'"
+}
+
 ###
 ### END: FUNCTION DEFINITIONS
 ###
 
+load_default_values
+
+###
+### BEGIN: parse command line for options/arguments
+###
+
+# get nextcloud path (first given argument has to be the path to Nextclouds directory)
+nextcloud_dir="$(get_absolute_path "$(pwd)" "${1}")"
+shift
+
+# read options and their arguments and store them in according variables:
+while [[ "${#}" -gt 0 ]]
+do
+  # store argument for error message, if invalid argument for option provided
+  # (needed because of needed shift to get different arguments)
+  option="${1}"
+
+  case "${1}" in
+    -bd | --backup-directory )
+      shift
+      check_argument "${1:-}"
+      backup_dir="${1}"
+    ;;
+#    -h | --help )
+#      # not yet implemented
+#      print_help
+#      exit 0
+#    ;;
+#    -ob | --only-backup )
+#       # not yet implemented
+#       exit 0
+#    ;;
+#    -rb | --restore-backup )
+#       # not yet implemented
+#       restore_backup
+#       exit 0
+#    ;;
+    -sw | --stop-webserver )
+      shift
+      check_argument "${1:-}"
+      stop_webserver="yes"
+      webserver_service="${1}"
+    ;;
+    -z | --zip )
+      compression_method="zip"
+    ;;
+    * )
+      echo "-  WARNING! Unrecognized option: ${1}"
+    ;;
+  esac
+  shift
+done
+
+###
+### END: parse command line for options/arguments
+###
+
+
+
 print_header
-read_configfile
 set_webserver_user
 set_php_command
 check_working_occ
@@ -670,7 +711,7 @@ maintenance_mode "on"
 create_temp_dir
 create_backup
 download_nextcloud
-[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "stop"
+[[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
 move_new_nextcloud
 copy_config
@@ -678,7 +719,7 @@ copy_data
 copy_3rd_party_apps
 copy_themes
 adjust_permissions
-[[ "${stop_webserver}" != "no" ]] && start_stop_webserver "start"
+[[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "start"
 upgrade_nextcloud
 maintenance_mode "off"
 clean_up
