@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# ncupgrade by BernieO - upgrades Nextcloud to desired version (see examples/ncupgrade.conf)
+# ncupgrade by BernieO - upgrades Nextcloud according to documentation for manual upgrades
 # Source: https://github.com/BernieO/ncupgrade
-# Copyright (C) 2017 BernieO
+# Copyright (C) 2018 BernieO
 #
 # This script is licensed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0
 #
@@ -60,18 +60,20 @@ load_default_values() {
   stop_webserver="no"
 }
 
-set_webserver_user() {
-# assings webserver user/group depending on owner of Nextclouds config.php
+preparations() {
 
-  htuser="$(stat --printf="%U" "${nextcloud_dir}/config/config.php")"
-  htgroup="$(stat --printf="%G" "${nextcloud_dir}/config/config.php")"
-}
+  local my_identity temp
 
-set_php_command() {
-# sets the command for executing the occ command depending if user root or webserveruser
+  # make sure nextcloud_dir and backup_dir are absolute paths (because we switch to temporary directory later):
+  nextcloud_dir="$(get_absolute_path "$(pwd)" "${nextcloud_dir}")"
+  backup_dir="$(get_absolute_path "$(pwd)" "${backup_dir}")"
 
-  local my_identity dir_list
+  # assing webserver user/group depending on owner of Nextclouds config.php:
+  temp="$(stat --printf="%U:%G" "${nextcloud_dir}/config/config.php")"
+  htuser="${temp%%:*}"
+  htgroup="${temp##*:}"
 
+  # set command for executing the occ command depending if run as 'root' or 'webserveruser':
   my_identity="$(whoami)"
   if [[ "${my_identity}" == "root" ]]; then
     # I am root, so use sudo to execute occ:
@@ -90,7 +92,7 @@ set_php_command() {
 }
 
 check_working_occ() {
-# checks whether a call for occ is working and stores Nextcloud version in variable $version
+# checks whether a call for occ is working and stores Nextcloud version in variable $nc_version
 
   local regex="^(Nextcloud|ownCloud)( version)? [[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}$"
 
@@ -108,7 +110,7 @@ check_working_occ() {
 check_available_version() {
 # checks https://download.nextcloud.com/server/releases/ for latest available version of main version XX
 
-  local all_releases regex_current regex_next line
+  local regex_current regex_next line
 
   # find out what would be the next major release:
   nc_version_next="${nc_version%%.*}"
@@ -119,9 +121,7 @@ check_available_version() {
   # regex for next major version:
   regex_next="nextcloud-${nc_version_next}\..\..{1,2}\.tar\.bz2"
 
-  # download and store website with all releases in variable all_releases:
-  all_releases="$(curl -sS "https://download.nextcloud.com/server/releases/")"
-
+  # download and store website with all releases and check for lines containing regex_current or regex_next:
   while read line; do
     [[ "${line}" =~ ${regex_current} ]] && {
       # store line that contains main version number of installed Nextcloud. Last result will be latest available version:
@@ -131,7 +131,7 @@ check_available_version() {
       # store line that contains next main version number of installed  Nextcloud. Last result will be latest available version:
       latest_available_next="${line##*nextcloud-}"
     }
-  done <<<"$(echo "${all_releases}")"
+  done <<<"$(curl -sS "https://download.nextcloud.com/server/releases/" | grep -E "(${regex_current}|${regex_next})")"
 
   # remove end of line to get version number of latest available point release of currently installed version:
   latest_available_current="${latest_available_current%%.tar.bz2*}"
@@ -192,7 +192,7 @@ confirm_upgrade() {
     fi
   done
 
-  # assign archive name according to entered version (using tar.bz2, because zip doesn't contain permissions):
+  # assign archive name according to entered version (using tar.bz2):
   nextcloud_archive="nextcloud-${upgrade_to_version}.tar.bz2"
 }
 
@@ -247,9 +247,6 @@ check_write_permission() {
 create_temp_dir() {
 # creates a temporary directory
 
-  # first make sure path to backup_dir is absolute (because we switch to temp-dir later):
-  backup_dir="$(get_absolute_path "$(pwd)" "${backup_dir}")"
-
   # create timestamp to append to backups:
   now=$(date +"%Y.%m.%d-%H.%M")
 
@@ -263,6 +260,7 @@ create_temp_dir() {
 
   # check for write permission
   check_write_permission "${temp_dir}" "temporary directory"
+
 
   # change to temporary directory (to have shorter download commands later)
   cd "${temp_dir}"
@@ -632,9 +630,9 @@ check_argument() {
 # checks for argument, if an option passed on command line needs an argument
 
   # if option was last on command line and no argument is following:
-  [[ -n "${1:-}" ]] || error_exit "Option '${option}' requires an additional argument."
+  [[ -n "${1:-}" ]] || error_exit "ERROR: Option '${option}' requires an additional argument."
   # if option was not last on command line, but an option (starting with a dash) is following instead of argument:
-  [[ "${1:0:1}" != "-" ]] || error_exit "Invalid argument for option '${option}'"
+  [[ "${1:0:1}" != "-" ]] || error_exit "ERROR: Arguments for options may not start with a hyphen ('${1}')"
 }
 
 ###
@@ -647,8 +645,11 @@ load_default_values
 ### BEGIN: parse command line for options/arguments
 ###
 
+# error and exit if not a single argument was passed to the script:
+[[ -n "${1:-}" ]] || error_exit "ERROR: path to Nextcloud directory is mandatory as first argument!"
+
 # get nextcloud path (first given argument has to be the path to Nextclouds directory)
-nextcloud_dir="$(get_absolute_path "$(pwd)" "${1}")"
+nextcloud_dir="${1}"
 shift
 
 # read options and their arguments and store them in according variables:
@@ -699,10 +700,8 @@ done
 ###
 
 
-
 print_header
-set_webserver_user
-set_php_command
+preparations
 check_working_occ
 check_available_version
 confirm_upgrade
