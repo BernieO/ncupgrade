@@ -24,13 +24,15 @@ set -euo pipefail
 # for debugging purposes:
 # set -x
 
+# ncupgrade version:
+ncupgrade_version="0.0.0-1 (08.03.2018), AGPL-3.0"
+
 ###
 ### BEGIN: FUNCTION DEFINITIONS
 ###
 
 error_exit() {
 # prints error message and exits script
-# if any arguments are passed, they all will be printed as error message
 
   # print all arguments that have been passed to this function as error message:
   for message in "$@"; do
@@ -47,6 +49,7 @@ print_header() {
 
   echo "+++++++++++++++++++++++++++++++++++++"
   echo "+"
+  echo "+  ncupgrade version ${ncupgrade_version}"
   echo "+  This script will back up and upgrade your Nextcloud installation."
   echo "+  Use at own risk!"
   echo "+"
@@ -98,7 +101,7 @@ check_working_occ() {
 
   # run occ command quietly:
   nc_version="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings -V)"
-  # check output against regex and if not matching - print $version (containing error message) and error exit:
+  # check output against regex and if not matching - print $nc_version (containing error message) and error exit:
   [[ "${nc_version}" =~ ${regex} ]] || {
     echo "${nc_version}"
     error_exit "ERROR: testing occ command returned an unexpected result. Can't proceed!"
@@ -613,6 +616,14 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+print_help() {
+# prints short help text
+
+  echo "ncupgrade version ${ncupgrade_version}"
+  echo "Usage: ./ncupgrade [DIRECTORY] [option [argument]] [option [argument]] [option [argument]] ..."
+  echo "Find more details in attached file 'README.md' or visit 'https://github.com/BernieO/ncupgrade'"
+}
+
 check_argument() {
 # checks for argument, if an option passed on command line needs an argument
 
@@ -652,11 +663,10 @@ do
       check_argument "${1:-}"
       backup_dir="${1}"
     ;;
-#    -h | --help )
-#      # not yet implemented
-#      print_help
-#      exit 0
-#    ;;
+    -h | --help )
+      print_help
+      exit 0
+    ;;
 #    -ob | --only-backup )
 #       # not yet implemented
 #       exit 0
