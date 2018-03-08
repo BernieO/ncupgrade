@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.0.0-1 (08.03.2018), AGPL-3.0"
+ncupgrade_version="0.0.0-2 (08.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -44,17 +44,6 @@ error_exit() {
   exit 1
 }
 
-print_header() {
-# prints a nice header with welcome message and advice to have a backup
-
-  echo "+++++++++++++++++++++++++++++++++++++"
-  echo "+"
-  echo "+  ncupgrade version ${ncupgrade_version}"
-  echo "+  This script will back up and upgrade your Nextcloud installation."
-  echo "+  Use at own risk!"
-  echo "+"
-}
-
 load_default_values() {
 # loads default values into variables:
 
@@ -64,8 +53,17 @@ load_default_values() {
 }
 
 preparations() {
+# does some preparational work (welcome message, make paths absolute, assign webserver user/group, set php_command)
 
   local my_identity temp
+
+  #print welcome message:
+  echo "+++++++++++++++++++++++++++++++++++++"
+  echo "+"
+  echo "+  ncupgrade version ${ncupgrade_version}"
+  echo "+  This script will back up and upgrade your Nextcloud installation."
+  echo "+  Use at own risk!"
+  echo "+"
 
   # make sure nextcloud_dir and backup_dir are absolute paths (because we switch to temporary directory later):
   nextcloud_dir="$(get_absolute_path "$(pwd)" "${nextcloud_dir}")"
@@ -697,7 +695,6 @@ done
 ###
 
 
-print_header
 preparations
 check_working_occ
 check_available_version
