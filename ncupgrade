@@ -232,18 +232,6 @@ maintenance_mode() {
   ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:mode --${1}
 }
 
-check_write_permission() {
-# checks whether I am able to write in given directory
-# arguments: $1 - directory to check for write permission
-#            $2 - explanation of directory
-
-  # check whether I am able to write into directory - error and exit if not:
-  touch "${1}/testfile" || error_exit "ERROR: I am not allowed to write in ${2}."
-
-  # I can write in directory - delete testfile:
-  rm "${1}/testfile"
-}
-
 create_temp_dir() {
 # creates a temporary directory
 
@@ -259,8 +247,7 @@ create_temp_dir() {
   mkdir -p "${temp_dir}" || error_exit "ERROR: can't create temporary directory '${temp_dir}'"
 
   # check for write permission
-  check_write_permission "${temp_dir}" "temporary directory"
-
+  [[ -w "${temp_dir}" ]] || error_exit "ERROR: can't write in temporary directory '${temp_dir}'"
 
   # change to temporary directory (to have shorter download commands later)
   cd "${temp_dir}"
@@ -415,7 +402,7 @@ create_backup() {
   mkdir -p "${backup_dir}" || error_exit "ERROR: can't create backup directory '${backup_dir}'"
 
   # check for write permission in backup directory:
-  check_write_permission "${backup_dir}" "backup directory"
+  [[ -w "${backup_dir}" ]] || error_exit "ERROR: can't write in backup directory '${backup_dir}'"
 
   # Maintenance mode is already enabled at this stage of this script
 
@@ -498,8 +485,8 @@ start_stop_webserver() {
 rename_old_nextcloud() {
 # adds current date and time to old Nextcloud folder to keep it as backup
 
-  # first check whether we have write permissions for parent directory of nextclouds directory:
-  check_write_permission "${nextcloud_dir%/*}" "Nextclouds parent directory"
+  # check whether we have write permissions for parent directory of nextclouds directory:
+  [[ -w "${nextcloud_dir%/*}" ]] || error_exit "ERROR: can't write in Nextclouds parent directory '${nextcloud_dir%/*}'"
 
   echo "+  renaming old Nextcloud folder (adding current date and time to foldername)"
   mv "${nextcloud_dir}" "${nextcloud_dir}_${now}"
