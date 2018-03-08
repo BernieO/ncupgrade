@@ -27,3 +27,25 @@ The script creates a backup of Nextclouds directory which may be used for restor
 4. Login to your Nextcloud webinterface and reenable all compatible 3rd party apps.  
 
 For further upgrades steps 1-3 may be omitted.  
+
+## Advanced
+
+All options need to be specified as command line arguments. It is mandatory to pass as very first argument the path to your Nextcloud instance. Find detailed description of all available options below.
+
+## Options
+
+```
+Usage: ./calcardbackup [DIRECTORY] [option [argument]] [option [argument]] [option [argument]] ...
+
+Arguments in capital letters to options are mandatory.
+Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directory.
+
+-bd | --backup-directory DIRECTORY
+       Use directory DIRECTORY to store backups.
+       If this option is not given, folder 'nextcloud_backups/' in script's directory is created and used.
+-sw | --stop-webserver WEBSERVER
+       Stop webserver during upgrade. This is recommended by the documentation, because clients might behave
+       unexpectedly, if they don't get a proper maintenance response due to missing/wrong endpoints during upgrade
+-z | --zip
+       use zip to compress backup folder instead of creating a gzipped tarball (tar.gz)
+```
