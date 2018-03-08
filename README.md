@@ -8,6 +8,7 @@ This Bash script creates a backup and performs an upgrade of a local Nextcloud i
 
 - local Nextcloud installation  
 - packages `curl`, `sudo` and `gnupg`  
+- the script needs to be run with root privileges or as webserver user (in this case the webserver obviously can't be stopped during upgrade)
 - if you want to stop the webserver during upgrade process (like recommended in the documentation), notice:  
 -- the script needs then to be run with root privilege  
 -- the script uses a `systemctl` call to stop and start the webserver  
@@ -19,10 +20,10 @@ This Bash script creates a backup and performs an upgrade of a local Nextcloud i
 `git clone https://github.com/BernieO/ncupgrade`  
 `cd ncupgrade`  
 
-2. Run the script with following arguments:  
+2. Run the script with root privileges and following arguments:  
 - the path to your Nextcloud installation (must be first argument)  
 - option -sw and your webservers service name (to stop and start the webserver during upgrade)  
-`./ncupgrade /path/to/nextcloud -sw nginx`  
+- for example: `./ncupgrade /path/to/nextcloud -sw nginx`  
 
 3. Check the output of the script carefully for errors. For troubleshooting [check this out](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst#troubleshooting)  
 The script creates a backup of Nextclouds directory which may be used for restoring the previous version.  
