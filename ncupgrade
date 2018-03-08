@@ -68,7 +68,7 @@ preparations() {
   nextcloud_dir="$(get_absolute_path "$(pwd)" "${nextcloud_dir}")"
   backup_dir="$(get_absolute_path "$(pwd)" "${backup_dir}")"
 
-  # assing webserver user/group depending on owner of Nextclouds config.php:
+  # assign webserver user/group depending on owner of Nextclouds config.php:
   temp="$(stat --printf="%U:%G" "${nextcloud_dir}/config/config.php")"
   htuser="${temp%%:*}"
   htgroup="${temp##*:}"
@@ -197,20 +197,20 @@ confirm_upgrade() {
 }
 
 get_absolute_path() {
-  # returns the absolute path to a given filepath which may be absolute or relative to a directory.
-  # this is only needed and used for paths given by user via config-file (because config-file could be in a different dir from working dir or script dir)
+  # returns the absolute path to a given filepath which may be absolute or relative to the directory from where the script has been invoked
+  # this needs to be done because the script changes directories
   # arguments: ${1}=directory; ${2}=path to file (relative to ${1} or absolute)
 
   if [[ "${2}" != /* ]]; then
     # change path of ${2} (file) relative to ${1} (dir) to absolute path and remove trailing slashes:
     local absolute_path="$(readlink -f "${1}/${2}")"
     # error and exit if readlink could not canonicalize the given path and did return nothing:
-    [[ "${absolute_path}" == "" ]] && error_exit "ERROR: ${1}/${2} can't be canonicalized. Check given path in config-file!"
+    [[ "${absolute_path}" == "" ]] && error_exit "ERROR: path '${1}/${2}' can't be canonicalized" "Check given path!"
   else
     # if ${2} contains already absolute path, then only remove trailing slashes:
     local absolute_path="$(readlink -f "${2}")"
     # error and exit if readlink could not canonicalize the given path and did return nothing:
-    [[ "${absolute_path}" == "" ]] && error_exit "ERROR: ${1}/${2} can't be canonicalized. Check given path in config-file!"
+    [[ "${absolute_path}" == "" ]] && error_exit "ERROR: path '${2}' can't be canonicalized" "Check given path!"
   fi
   echo "${absolute_path}"
 }
