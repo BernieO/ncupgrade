@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.0.0-3 (09.03.2018), AGPL-3.0"
+ncupgrade_version="0.0.0-4 (14.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -49,7 +49,6 @@ load_default_values() {
 
   backup_dir="nextcloud_backups"
   compression_method="tar.gz"
-  stop_webserver="no"
 }
 
 preparations() {
@@ -671,6 +670,9 @@ do
       print_help
       exit 0
     ;;
+    -k | --keep-webserver-running )
+      stop_webserver="no"
+    ;;
 #    -ob | --only-backup )
 #       # not yet implemented
 #       exit 0
@@ -680,7 +682,7 @@ do
 #       restore_backup
 #       exit 0
 #    ;;
-    -sw | --stop-webserver )
+    -w | --webserver )
       shift
       check_argument "${1:-}"
       stop_webserver="yes"
@@ -695,6 +697,9 @@ do
   esac
   shift
 done
+
+# make sure option -k or -w was passed to the script:
+[[ -z "${stop_webserver:-}" ]] && error_exit "ERROR: missing mandatory option '-w WEBSERVER' or '-k'"
 
 ###
 ### END: parse command line for options/arguments
