@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.0.0-4 (14.03.2018), AGPL-3.0"
+ncupgrade_version="0.0.0-5 (16.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -544,7 +544,7 @@ copy_3rd_party_apps() {
       if [[ ! -d "${nextcloud_dir}/apps/${i##*/}" ]]; then
         printf "%s\n" "+      copying app ${i##*/}"
         cp -a "$i" "${nextcloud_dir}/apps/"
-        (( count++ ))
+        count=$((count+1))
       fi
     fi
   done
@@ -568,7 +568,7 @@ copy_themes() {
       if [[ ! -d "${nextcloud_dir}/themes/${i##*/}" ]]; then
         printf "%s\n" "+      copying theme ${i##*/}"
         cp -a "$i" "${nextcloud_dir}/themes/"
-        (( count++ ))
+        count=$((count+1))
       fi
     fi
   done
