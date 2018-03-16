@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ncupgrade by BernieO - upgrades Nextcloud according to documentation for manual upgrades
+# ncupgrade by BernieO - creates backup and upgrades Nextcloud according to documentation for manual upgrades
 # Source: https://github.com/BernieO/ncupgrade
 # Copyright (C) 2018 BernieO
 #
@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.0.0-6 (16.03.2018), AGPL-3.0"
+ncupgrade_version="0.0.0-7 (17.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -60,7 +60,7 @@ preparations() {
   echo "+++++++++++++++++++++++++++++++++++++"
   echo "+"
   echo "+  ncupgrade version ${ncupgrade_version}"
-  echo "+  This script will back up and upgrade your Nextcloud installation."
+  echo "+  This script creates backups and upgrades your Nextcloud installation."
   echo "+  Use at own risk!"
   echo "+"
 
@@ -673,10 +673,9 @@ do
     -k | --keep-webserver-running )
       stop_webserver="no"
     ;;
-#    -ob | --only-backup )
-#       # not yet implemented
-#       exit 0
-#    ;;
+    -ob | --only-backup )
+      only_backup="yes"
+    ;;
 #    -rb | --restore-backup )
 #       # not yet implemented
 #       restore_backup
@@ -698,15 +697,32 @@ do
   shift
 done
 
-# make sure option -k or -w was passed to the script:
-[[ -z "${stop_webserver:-}" ]] && error_exit "ERROR: missing mandatory option '-w WEBSERVER' or '-k'"
-
 ###
 ### END: parse command line for options/arguments
 ###
 
-
 preparations
+
+if [[ "${only_backup:-}" == "yes" ]]; then
+  # fond option -ob: only create a backup and then exit:
+  echo "+  found option -ob: will only back up your Nextcloud"
+  check_working_occ
+  locate_data_dir
+  maintenance_mode "on"
+  create_temp_dir
+  create_backup
+  maintenance_mode "off"
+  echo "+  removing temporary directory"
+  rm -r /tmp/ncupgrade
+  echo "+  Find the backup of your Nextcloud here:"
+  echo "+     --> ${backup_dir}/"
+  echo "+"
+  echo "+++++++++++++++++++++++++++++++++++++"
+  exit 0
+fi
+
+# we are going to do an upgrade, so make sure option -k or -w was passed to the script:
+[[ -z "${stop_webserver:-}" ]] && error_exit "ERROR: missing mandatory option '-w WEBSERVER' or '-k'"
 check_working_occ
 check_available_version
 confirm_upgrade

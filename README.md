@@ -2,6 +2,7 @@
 
 This Bash script upgrades a local Nextcloud installation based on the [Nextcloud documentation for manual upgrades](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst).  
 Before the upgrade a backup of the running Nextcloud instance will be created [(also based on the official documentation)](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/backup.rst) before upgrading.  
+With option `-ob` this script may also be used to only backup Nextcloud (no upgrade will be performed with this option).  
 
 **In any case: use at own risk!**  
 
@@ -33,7 +34,9 @@ The script creates a backup of Nextclouds directory which may be used for restor
 
 ## Advanced
 
-All options need to be specified as command line arguments. It is mandatory to pass as very first argument the path to your Nextcloud instance as well as passing option `-w WEBSERVER` or `-k` to the script. Find detailed description of all available options below.
+All options need to be specified as command line arguments. It is mandatory to pass as very first argument the path to your Nextcloud instance as well as passing option `-w WEBSERVER` or `-k` to the script.  
+If run with option -ob options `-k`/`-w WEBSERVER` will be ignored.  
+Find detailed description of all available options below.  
 
 ## Options
 
@@ -53,7 +56,10 @@ Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directo
        during upgrade, this might not always be possible (for example in shared hosting environments or if other
        webservices running on the same webserver need to stay online).   
        Either this option or -w WEBSERVER need to be passed to the script.
--w | --webserver WEBSERVER
+-ob | --only-backup
+       Only create a backup of Nextcloud and then quit. No Upgrade will be done.
+       When run with this option, options -k/-w will be ignored
+-w  | --webserver WEBSERVER
        Stop service WEBSERVER during upgrade with systemctl.
        This is recommended in the Nextcloud documentation, because clients might behave
        unexpectedly, if they don't get a proper maintenance response due to missing/wrong endpoints during upgrade.
