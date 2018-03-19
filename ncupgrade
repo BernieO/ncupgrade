@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.0.0-7 (17.03.2018), AGPL-3.0"
+ncupgrade_version="0.0.0-8 (19.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -377,17 +377,23 @@ backup_database() {
 backup_data_dir() {
 # stores a compressed backup of Nextclouds data directory in backup directory
 
-  local regex
+  local regex explanation
 
   # check whether data directory is located inside nextcloud directory:
   regex="^${nextcloud_dir}*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
-    echo "+  data directory is located inside Nextcloud directory"
+    # data directory resides inside nextcloud directory:
+    [[ -z "${exclude_data_directory:-}" ]] || explanation="- ignoring option '-ed'"
+    echo "+  data directory is located inside Nextcloud directory ${explanation:-}"
   else
-    printf "%s" "+  backing up data directory (located outside of Nextcloud folder)... "
-    # compress data directory and store it in backup directory:
-    compress_backup "${nc_data_dir}" "${backup_dir}/nextcloud-${nc_version}-data"
-    printf "%s\n" "done!"
+    if [[ "${exclude_data_directory:-}" == "yes" ]]; then
+      echo "+  found option '-ed': not backing up data directory (located outside of Nextcloud folder)"
+    else
+      printf "%s" "+  backing up data directory (located outside of Nextcloud folder)... "
+      # compress data directory and store it in backup directory:
+      compress_backup "${nc_data_dir}" "${backup_dir}/nextcloud-${nc_version}-data"
+      printf "%s\n" "done!"
+    fi
   fi
 }
 
@@ -665,6 +671,9 @@ do
       shift
       check_argument "${1:-}"
       backup_dir="${1}"
+    ;;
+    -ed | --exclude-data-directory )
+      exclude_data_directory="yes"
     ;;
     -h | --help )
       print_help
