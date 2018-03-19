@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.1.0 (19.03.2018), AGPL-3.0"
+ncupgrade_version="0.1.0-1 (19.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -276,7 +276,11 @@ compress_backup() {
 # arguments:
 #       $1 - path to be compressed (file or directory)
 #       $2 - path (including filename) under which the compressed file shall be saved
-#                            (timestamp and extension will be added in this function)
+#       $3 - name of item:
+#                  data = Nextclouds data directory
+#                  dir  = Nextcloud directory
+#                  sql  = SQL dump
+#       (timestamp and extension will be added in this function)
 
   local original_dir compress_error
 
@@ -288,14 +292,14 @@ compress_backup() {
   # compress backup using the configured method (zip or tar.gz):
   if [[ "${compression_method}" == "zip" ]]; then
     # use zip to compress file or directory:
-    zip -r -q "${2}_${now}.zip" "${1##*/}"
+    zip -r -q "${2}_${now}_${3}.zip" "${1##*/}"
     # store error, to be able to print error message:
     [[ $? -eq 0 ]] || compress_error="1"
   else
     # use "tar.gz" as compression_method, in case invalid value was entered:
     compression_method="tar.gz"
     # use tar.gz to compress folder with backed up files:
-    tar -czf "${2}_${now}.tar.gz" "${1##*/}"
+    tar -czf "${2}_${now}_${3}.tar.gz" "${1##*/}"
     # store error, to be able to print error message:
     [[ $? -eq 0 ]] || compress_error="1"
   fi
@@ -369,7 +373,7 @@ backup_database() {
   [[ "${dump_error}" != "0" ]] && error_exit "ERROR: could not create dump of database."
 
   # compress database backup and move it to backup folder:
-  compress_backup "${temp_dir}/nextcloud-sql.bak" "${backup_dir}/nextcloud-${nc_version}-sql"
+  compress_backup "${temp_dir}/nextcloud-sql.bak" "${backup_dir}/nextcloud-${nc_version}" "sql"
 
   printf "%s\n" "done!"
 }
@@ -391,7 +395,7 @@ backup_data_dir() {
     else
       printf "%s" "+  backing up data directory (located outside of Nextcloud folder)... "
       # compress data directory and store it in backup directory:
-      compress_backup "${nc_data_dir}" "${backup_dir}/nextcloud-${nc_version}-data"
+      compress_backup "${nc_data_dir}" "${backup_dir}/nextcloud-${nc_version}" "data"
       printf "%s\n" "done!"
     fi
   fi
@@ -402,7 +406,7 @@ backup_nc_dir() {
 
   printf "%s" "+  backing up Nextcloud directory... "
   # compress Nextcloud directory and store it in backup directory:
-  compress_backup "${nextcloud_dir}" "${backup_dir}/nextcloud-${nc_version}-dir"
+  compress_backup "${nextcloud_dir}" "${backup_dir}/nextcloud-${nc_version}" "dir"
   printf "%s\n" "done!"
 }
 
