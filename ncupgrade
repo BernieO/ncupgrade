@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.1.0-1 (19.03.2018), AGPL-3.0"
+ncupgrade_version="0.1.0-2 (22.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -116,7 +116,7 @@ check_working_occ() {
 check_available_version() {
 # checks https://download.nextcloud.com/server/releases/ for latest available version of main version XX
 
-  local regex_current regex_next line
+  local regex_current regex_next regex_utv utv_available line
 
   # find out what would be the next major release:
   nc_version_next="${nc_version%%.*}"
@@ -126,6 +126,8 @@ check_available_version() {
   regex_current="nextcloud-${nc_version%%.*}\..\..{1,2}\.tar\.bz2"
   # regex for next major version:
   regex_next="nextcloud-${nc_version_next}\..\..{1,2}\.tar\.bz2"
+  # regex for specific version (set via option -utv):´
+  [[ -z "${upgrade_to_version:-}" ]] || regex_utv="nextcloud-${upgrade_to_version}\.tar\.bz2"
 
   # download and store website with all releases and check for lines containing regex_current or regex_next:
   while read line; do
@@ -137,7 +139,14 @@ check_available_version() {
       # store line that contains next main version number of installed  Nextcloud. Last result will be latest available version:
       latest_available_next="${line##*nextcloud-}"
     }
+    [[ -z "${upgrade_to_version:-}" ]] || {
+      # if run with option -utv: check whether the desired version is available on Nextclouds download server:
+      [[ "${line}" =~ ${regex_utv} ]] && utv_available="yes"
+    }
   done <<<"$(curl -sS "https://download.nextcloud.com/server/releases/" | grep -E "(${regex_current}|${regex_next})")"
+
+  # error and exit, if desired version passed via option -utv is not available on Nextclouds download server:
+  [[ -n "${regex_utv:-}" && "${utv_available:-}" == "yes" ]] || error_exit "ERROR: specified version not available on Nextclouds download server!"
 
   # remove end of line to get version number of latest available point release of currently installed version:
   latest_available_current="${latest_available_current%%.tar.bz2*}"
@@ -156,27 +165,38 @@ confirm_upgrade() {
   local sure
 
   echo "+  Currently installed version is:   Nextcloud ${nc_version}"
-  if [[ "${latest_available_current}" != "${nc_version}" ]]; then
-    # there is a newer point release of currently installed version available on the download page:
-    echo "+  Latest available point release:   Nextcloud ${latest_available_current}"
-    upgrade_to_version="${latest_available_current}"
-    unset latest_available_current
-  else
-    # the currently installed version is already the latest point release:
-    echo "+  Version ${nc_version} is the latest available point release of Nextcloud ${nc_version%%.*}"
-    if [[ -n ${latest_available_next:-} ]]; then
-      # the next major version is available on the download page:
-      echo "+  However the next major release is available:   Nextcloud ${latest_available_next}"
-      upgrade_to_version="${latest_available_next}"
-      unset latest_available_next
+
+  if [[ -n "${upgrade_to_version:-}" ]]; then
+    # option -utv has been used: exclude forbidden upgrade paths (skipping major releases or downgrading):
+    if [[ ${upgrade_to_version%%.*} -eq ${nc_version%%.*} ]]; then
+      [[ ${upgrade_to_version##*.} -ge ${nc_version##*.} ]] || error_exit "ERROR: Downgrading is not supported!"
     else
-      # there is no upgrade available for the currently installed Nextcloud server:
-      echo "+  Looks like the next major version (Nextcloud ${nc_version_next}) is not released yet."
-      echo "+  There is no upgrade available for your Nextcloud server."
-      echo "+  Exiting."
-      echo "+"
-      echo "+++++++++++++++++++++++++++++++++++++"
-      exit 0
+      [[ ${upgrade_to_version%%.*} -gt ${nc_version%%.*} ]] || error_exit "ERROR: Downgrading is not supported!"
+      [[ ${upgrade_to_version%%.*} -eq ${nc_version_next} ]] || error_exit "ERROR: Skipping major releases is not supported!"
+    fi
+  else
+    if [[ "${latest_available_current}" != "${nc_version}" ]]; then
+      # there is a newer point release of currently installed version available on the download page:
+      echo "+  Latest available point release:   Nextcloud ${latest_available_current}"
+      upgrade_to_version="${latest_available_current}"
+      unset latest_available_current
+    else
+      # the currently installed version is already the latest point release:
+      echo "+  Version ${nc_version} is the latest available point release of Nextcloud ${nc_version%%.*}"
+      if [[ -n ${latest_available_next:-} ]]; then
+        # the next major version is available on the download page:
+        echo "+  However the next major release is available:   Nextcloud ${latest_available_next}"
+        upgrade_to_version="${latest_available_next}"
+        unset latest_available_next
+      else
+        # there is no upgrade available for the currently installed Nextcloud server:
+        echo "+  Looks like the next major version (Nextcloud ${nc_version_next}) is not released yet."
+        echo "+  There is no upgrade available for your Nextcloud server."
+        echo "+  Exiting."
+        echo "+"
+        echo "+++++++++++++++++++++++++++++++++++++"
+        exit 0
+      fi
     fi
   fi
 
@@ -689,6 +709,11 @@ do
     -ob | --only-backup )
       only_backup="yes"
     ;;
+    -utv | --upgrade-to-version )
+      shift
+      check_argument "${1:-}"
+      upgrade_to_version="${1:-}"
+    ;;
 #    -rb | --restore-backup )
 #       # not yet implemented
 #       restore_backup
@@ -753,7 +778,12 @@ copy_3rd_party_apps
 copy_themes
 adjust_permissions
 [[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "start"
-upgrade_nextcloud
+# only run upgrade script if installed version differs from previously installed version (possible via option -utv):
+if [[ "${upgrade_to_version}" == "${nc_version}" ]]; then
+  echo "+  no need to run upgrade script, because exactly same version has been installed"
+else
+  upgrade_nextcloud
+fi
 maintenance_mode "off"
 clean_up
 print_footer
