@@ -1,5 +1,7 @@
 vX.X.X (XX.XX.XXXX)
+- added: possibility to upgrade to a specific version (option -utv)
 - changed: naming of backup files for better sorting in directory listings
+- fixed: tolerate that Nextcloud 10.0.0 reports itself as 10.0
 
 v0.1.0 (30.04.2017)
 - initial release

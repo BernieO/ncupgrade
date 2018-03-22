@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.1.0-2 (22.03.2018), AGPL-3.0"
+ncupgrade_version="0.1.0-3 (22.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -98,6 +98,9 @@ check_working_occ() {
 
   # run occ command quietly:
   nc_version="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings -V)"
+  # tolerate that Nextcloud 10.0.0 reports itself as 10.0:
+  [[ "${nc_version##* }" == "10.0" ]] && nc_version="Nextcloud version 10.0.0"
+
   # check output against regex and if not matching - print $nc_version (containing error message) and error exit:
   [[ "${nc_version}" =~ ${regex} ]] || {
     echo "${nc_version}"
@@ -116,7 +119,7 @@ check_working_occ() {
 check_available_version() {
 # checks https://download.nextcloud.com/server/releases/ for latest available version of main version XX
 
-  local regex_current regex_next regex_utv utv_available line
+  local regex_current regex_next middle_number regex_utv utv_available line
 
   # find out what would be the next major release:
   nc_version_next="${nc_version%%.*}"
@@ -127,7 +130,11 @@ check_available_version() {
   # regex for next major version:
   regex_next="nextcloud-${nc_version_next}\..\..{1,2}\.tar\.bz2"
   # regex for specific version (set via option -utv):´
-  [[ -z "${upgrade_to_version:-}" ]] || regex_utv="nextcloud-${upgrade_to_version}\.tar\.bz2"
+  [[ -z "${upgrade_to_version:-}" ]] || {
+    middle_number="${upgrade_to_version%.*}"
+    middle_number="${middle_number#*.}"
+    regex_utv="nextcloud-${upgrade_to_version%%.*}\.${middle_number}\.${upgrade_to_version##*.}\.tar\.bz2"
+  }
 
   # download and store website with all releases and check for lines containing regex_current or regex_next:
   while read line; do
@@ -143,10 +150,12 @@ check_available_version() {
       # if run with option -utv: check whether the desired version is available on Nextclouds download server:
       [[ "${line}" =~ ${regex_utv} ]] && utv_available="yes"
     }
-  done <<<"$(curl -sS "https://download.nextcloud.com/server/releases/" | grep -E "(${regex_current}|${regex_next})")"
+  done <<<"$(curl -sS "https://download.nextcloud.com/server/releases/" | grep -E "(${regex_current}|${regex_next}|${regex_utv:-})")"
 
   # error and exit, if desired version passed via option -utv is not available on Nextclouds download server:
-  [[ -n "${regex_utv:-}" && "${utv_available:-}" == "yes" ]] || error_exit "ERROR: specified version not available on Nextclouds download server!"
+  if [[ -n "${regex_utv:-}" ]]; then
+    [[ "${utv_available:-}" == "yes" ]] || error_exit "ERROR: specified version not available on Nextclouds download server!"
+  fi
 
   # remove end of line to get version number of latest available point release of currently installed version:
   latest_available_current="${latest_available_current%%.tar.bz2*}"
