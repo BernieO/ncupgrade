@@ -66,6 +66,8 @@ Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directo
 -utv| --upgrade-to-version X.X.X
        Upgrade to specific version X.X.X instead of upgrading to the latest available possible.
        Downgrading as well as skipping major releases is not supported.
+       For normal operation this option is not neccessary, since ncupgrade looks automatically for
+       the latest possible available upgrade.
 -w  | --webserver WEBSERVER
        Stop service WEBSERVER during upgrade with systemctl.
        This is recommended in the Nextcloud documentation, because clients might behave
