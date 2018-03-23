@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0 (23.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-1 (23.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -658,6 +658,47 @@ print_footer() {
   echo "+++++++++++++++++++++++++++++++++++++"
 }
 
+select_backup() {
+  # scan backup directory for available backups and let user choose which one to restore:
+
+  local regex temp number
+
+  echo "+  Looking for backups in ${backup_dir}..."
+
+  i=0
+  # regex matches nextcloud_dir backed up with ncupgrade:
+  regex="^nextcloud-[[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}_[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}-[[:digit:]]{2}\.[[:digit:]]{2}_dir\.(tar\.gz|zip)$"
+  for file in $(ls -t "${backup_dir}"); do
+    if [[ "${file}" =~ ${regex} ]]; then
+      i=$((i+1))
+      backup_file[$i]="${file}"
+      temp="${file##*nextcloud-}"
+      backup_vers[$i]="${temp%%_*}"
+      temp="${temp#*_}"
+      backup_date[$i]="${temp%%-*}"
+      temp="${temp#*-}"
+      backup_time[$i]="${temp%%_*}"
+      echo "     $i:   Nextcloud ${backup_vers[$i]} - created ${backup_date[$i]}, ${backup_time[$i]}"
+    fi
+  done
+
+  # exit with error, if  not backups have been found:
+  [[ $i > 0 ]] || error_exit "ERROR: no backups in backup directory found!"
+
+  # let user choose which backup to restore:
+  while read -r -n 2 -p "+  Enter number of backup to be restored (1-${i}): " n; do
+    if [[ ${n} -ge 1 && ${n} -le ${i} ]]; then
+      # if valid number was entered: exit the while loop and proceed:
+      printf "%s\n" "+  You chose to restore backup number ${n}"
+      break
+    else
+      # if not a valid value was entered - repeat while loop (and print new line if two characters where entered:
+      [[ "${n}" =~ ^.$ ]] || printf "\n"
+    fi
+  done
+
+}
+
 print_help() {
 # prints short help text
 
@@ -723,11 +764,9 @@ do
       check_argument "${1:-}"
       upgrade_to_version="${1:-}"
     ;;
-#    -rb | --restore-backup )
-#       # not yet implemented
-#       restore_backup
-#       exit 0
-#    ;;
+    -rb | --restore-backup )
+       restore_backup="yes"
+    ;;
     -w | --webserver )
       shift
       check_argument "${1:-}"
@@ -765,6 +804,14 @@ if [[ "${only_backup:-}" == "yes" ]]; then
   echo "+     --> ${backup_dir}/"
   echo "+"
   echo "+++++++++++++++++++++++++++++++++++++"
+  exit 0
+fi
+
+if [[ "${restore_backup:-}" == "yes" ]]; then
+  # found option -rb: restore backup and then exit:
+  echo "+  found option -rb: will only restore your Nextcloud"
+  select_backup
+  echo "+  option -rb not yet completely implemented!"
   exit 0
 fi
 
