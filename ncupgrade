@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-1 (23.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-2 (24.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -223,7 +223,7 @@ confirm_upgrade() {
       }
     else
       # if not a valid value was entered - print newline and repeat while loop:
-      printf "\n"
+      [[ "${sure}" =~ ^.$ ]] || printf "\n"
     fi
   done
 
@@ -661,7 +661,7 @@ print_footer() {
 select_backup() {
   # scan backup directory for available backups and let user choose which one to restore:
 
-  local regex temp number
+  local regex temp i sure
 
   echo "+  Looking for backups in ${backup_dir}..."
 
@@ -687,16 +687,33 @@ select_backup() {
 
   # let user choose which backup to restore:
   while read -r -n 2 -p "+  Enter number of backup to be restored (1-${i}): " n; do
-    if [[ ${n} -ge 1 && ${n} -le ${i} ]]; then
-      # if valid number was entered: exit the while loop and proceed:
-      printf "%s\n" "+  You chose to restore backup number ${n}"
-      break
-    else
-      # if not a valid value was entered - repeat while loop (and print new line if two characters where entered:
-      [[ "${n}" =~ ^.$ ]] || printf "\n"
+    if [[ "${n}" =~ [0-9]{1,2} ]]; then
+      if [[ ${n} -ge 1 && ${n} -le ${i} ]]; then
+        # if valid number was entered: exit the while loop and proceed:
+        break
+      fi
     fi
+    # if not a valid value was entered - repeat while loop (and print new line if two characters where entered:
+    [[ "${n}" =~ ^.$ ]] || printf "\n"
   done
 
+  # ask for confirmation:
+  while read -r -n 2 -p "+  Confirm restore backup Nextcloud ${backup_vers[$n]} from ${backup_date[$n]}, ${backup_time[$n]} (y/n): " sure; do
+    if [[ ${sure} = [YyNn] ]]; then
+      [[ ${sure} = [Yy] ]] && {
+        # if confirmed (Y or y): exit the while loop and proceed:
+        printf "%s\n" "+  Confirmed. Starting to restore backup"
+        break
+      }
+      [[ ${sure} = [Nn] ]] && {
+        # if not confirmed (N or n) error and exit:
+        error_exit "ERROR: restoring backup not confirmed."
+      }
+    else
+      # if not a valid value was entered - print newline and repeat while loop:
+      [[ "${sure}" =~ ^.$ ]] || printf "\n"
+    fi
+  done
 }
 
 print_help() {
