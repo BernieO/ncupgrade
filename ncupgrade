@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-2 (24.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-3 (25.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -89,6 +89,9 @@ preparations() {
     fi
   fi
   echo "+  running as '${my_identity}'"
+
+  # create timestamp to append to backups:
+  now=$(date +"%Y.%m.%d-%H.%M")
 }
 
 check_working_occ() {
@@ -269,9 +272,6 @@ maintenance_mode() {
 
 create_temp_dir() {
 # creates a temporary directory
-
-  # create timestamp to append to backups:
-  now=$(date +"%Y.%m.%d-%H.%M")
 
   echo "+  creating temporary directory"
 
@@ -714,6 +714,31 @@ select_backup() {
       [[ "${sure}" =~ ^.$ ]] || printf "\n"
     fi
   done
+
+  # find out which compression method was used:
+  nc_backup_compression="tar.gz"
+  [[ "${backup_file[$n]}" =~ \.zip$ ]] && nc_backup_compression="zip"
+  # assign filenames of according backup:
+  nc_backup_dir="${backup_file[$n]}"
+  nc_backup_sql="${backup_file[$n]%_*}_sql.${nc_backup_compression}"
+  nc_backup_data="${backup_file[$n]%_*}_data.${nc_backup_compression}"
+}
+
+restore_nextcloud_dir() {
+  # restores nextcloud directory from backup
+
+  # move eventually existing directory at to be restored location out of the way:
+  [[ -d "${nextcloud_dir}" ]] && rename_old_nextcloud
+  echo "+  after successfully restoring the backup you may want to delete folder ${nextcloud_dir}_${now}"
+
+  # unpack Nextcloud dir from backup to desired location:
+  printf "%s" "+  restoring Nextcloud directory from backup... "
+  if [[ "${nc_backup_compression}" == "tar.gz" ]]; then
+    tar -xzf "${backup_dir}/${nc_backup_dir}" -C "${nextcloud_dir%/*}/"
+  elif [[ "${nc_backup_compression}" == "zip" ]]; then
+    unzip -q "${backup_dir}/${nc_backup_dir}" -d "${nextcloud_dir%/*}/"
+  fi
+  printf "%s\n" "done!"
 }
 
 print_help() {
@@ -828,6 +853,11 @@ if [[ "${restore_backup:-}" == "yes" ]]; then
   # found option -rb: restore backup and then exit:
   echo "+  found option -rb: will only restore your Nextcloud"
   select_backup
+  restore_nextcloud_dir
+  # restore_nextcloud_sql
+  # restore_nextcloud_data
+  adjust_permissions
+  maintenance_mode "off"
   echo "+  option -rb not yet completely implemented!"
   exit 0
 fi
