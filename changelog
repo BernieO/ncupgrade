@@ -1,3 +1,9 @@
+vX.X.X (XX.XX.XXXX)
+- added: option -rb | --restore-backup
+- changed: read Nextclouds configuration from config.php instead of using occ
+- minor bugfixes (regular expressions)
+- improved: code readability
+
 v0.2.0 (23.03.2018)
 - added: possibility to upgrade to a specific version (option -utv)
 - changed: naming of backup files for better sorting in directory listings

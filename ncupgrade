@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-4 (27.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-5 (27.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -295,17 +295,8 @@ create_temp_dir() {
   rm -rf *
 }
 
-get_nc_config_value() {
-# reads value ($1) from Nextclouds system configuration
-
-  local value
-
-  value="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings config:system:get ${1})"
-  echo "${value}"
-}
-
 getvalue_from_configphp() {
-# reads a line with a given paramter from config.php and echoes the parameters value
+# reads a line with a given paramter from config.php and returns the parameters value
 # arguments: ${1} is name of value that shall be returned
 
   # Notice: multi-line comments (/* ... */) are not recognized, if no marker at beginning of line. The first occurence of ${1} will be returned
@@ -321,14 +312,14 @@ getvalue_from_configphp() {
 
   # if parameter was found ($line is not empty) - manipulate $line to only return the value and nothing else:
   if [[ "${line:-}" != "" ]]; then
-    if [[ "${line}" =~ ( true| false),$ ]]; then
-      # in case it is a boolean value (they are not surrounded by ''):
-      [[ "${line}" =~ true ]] && line="true"
-      [[ "${line}" =~ false ]] && line="false"
+    if [[ ! "${line}" =~ \',$ ]]; then
+      # in case it is a boolean value or a number (value not surrounded from '') - separate value:
+      line=${line%,*}    # throw away end including last ","
+      line=${line##* }   # throw away beginning including last SPACE
     else
-      # value is not boolean - separate the value:
-      line=${line%\'*} # throw away end including last '
-      line=${line##*\'} # throw away beginning including last '
+      # value is surrounded from '' - separate the value:
+      line=${line%\'*}   # throw away end including last '
+      line=${line##*\'}  # throw away beginning including last '
     fi
   fi
   echo "${line:-}"
@@ -379,14 +370,14 @@ backup_database() {
   printf "%s" "+  backing up database... "
 
   # first we need to find out which type of database is used (SQLite3, MySQL/MariaDB, PostgreSQL)
-  dbtype="$(get_nc_config_value "dbtype")"
+  dbtype="$(getvalue_from_configphp "dbtype")"
 
   if [[ "$dbtype" != "sqlite3" ]]; then
     # if database is not SQLite3 - we also need more things to know (dbhost, dbname, dbuser, dbpassword)
-    dbhost="$(get_nc_config_value "dbhost")"
-    dbname="$(get_nc_config_value "dbname")"
-    dbuser="$(get_nc_config_value "dbuser")"
-    dbpassword="$(get_nc_config_value "dbpassword")"
+    dbhost="$(getvalue_from_configphp "dbhost")"
+    dbname="$(getvalue_from_configphp "dbname")"
+    dbuser="$(getvalue_from_configphp "dbuser")"
+    dbpassword="$(getvalue_from_configphp "dbpassword")"
 
     # check whether dbhost contains socket (e.g. 'localhost:/path/to/socket') or portnumber (e.g. 'localhost:3306')
     #   and store it for commands:
@@ -606,7 +597,7 @@ copy_3rd_party_apps() {
 
   local i count
 
-  printf "%s\n" "+  looking for missing 3rd party applications in new Nextcloud directory:"
+  printf "%s\n" "+  looking for missing apps in new Nextcloud directory:"
   count=0
   # go through apps directory from old Nextcloud, check if present in new Nextcloud and copy if not:
   for i in ${nextcloud_dir}_${now}/apps/*; do
@@ -620,7 +611,7 @@ copy_3rd_party_apps() {
       fi
     fi
   done
-  [[ ${count} != 0 ]] || printf "%s\n" "+  no missing applications in new Nextcloud directory found."
+  [[ ${count} != 0 ]] || printf "%s\n" "+  no missing apps in new Nextcloud directory found."
 }
 
 copy_themes() {
@@ -691,10 +682,8 @@ print_footer() {
   echo "+  If there were any errors - have a look at the troubleshooting section:"
   echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst"
   echo "+"
-  echo "+  If you need to restore your previous installation, follow this guide:"
-  echo "+  https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/restore.rst"
-  echo "+  Find the backup of your previous installation here:"
-  echo "+     --> ${backup_dir}/"
+  echo "+  If you need to restore your previous installation, use this command:"
+  echo "+  ./ncupgrade ${nextcloud_dir} -rb -bd ${backup_dir}"
   echo "+"
   echo "+++++++++++++++++++++++++++++++++++++"
 }
@@ -770,7 +759,7 @@ restore_nextcloud_dir() {
 
   printf "%s" "+  restoring Nextcloud directory... "
 
-  # empty eventually existing directory at to be restored location:
+  # delete eventually existing Nextcloud directory at to be restored location:
   [[ -d "${nextcloud_dir}" ]] && rm -r "${nextcloud_dir}"
 
   # unpack Nextcloud dir from backup to desired location:
@@ -792,10 +781,10 @@ restore_nextcloud_data() {
   regex="^${nextcloud_dir}.*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
     # data directory resides inside nextcloud directory:
-    echo "+  data directory is located inside Nextcloud directory. Nothing to do."
+    echo "+  data directory is located inside Nextcloud directory. Already restored."
   else
     if [[ -r "${backup_dir}/${nc_backup_data}" ]]; then
-      # empty eventually existing data dir:
+      # delete eventually existing data dir:
       rm -r "${nc_data_dir}"
       # unpack Nextcloud dir from backup to desired location:
       printf "%s" "+  restoring data directory ${nc_data_dir} (outside Nextcloud dir)... "
@@ -819,7 +808,7 @@ restore_nextcloud_data() {
 restore_nextcloud_database() {
 # restores nextcloud database from backup
 
-  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD dump_error
+  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD
 
   printf "%s" "+  restoring Nextcloud database... "
 
@@ -910,9 +899,8 @@ restore_nextcloud_database() {
 maintenance_data_fingerprint() {
 # changes the ETag for all files. Available since Nextcloud 12.0
 
-  nc_version="$(getvalue_from_configphp "versionstring")"
+  nc_version="$(getvalue_from_configphp "version")"
   main_version="${nc_version%%.*}"
-
   if [[ ${main_version} -ge 12 ]]; then
     printf "%s" "+  changing the ETag for all files (maintenance:data-fingerprint)... "
     ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:data-fingerprint
