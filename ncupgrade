@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-3 (25.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-4 (27.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -64,12 +64,16 @@ preparations() {
   echo "+  Use at own risk!"
   echo "+"
 
+  # store working directory to be able to switch back later:
+  original_dir="$(pwd)"
+
   # make sure nextcloud_dir and backup_dir are absolute paths (because we switch to temporary directory later):
-  nextcloud_dir="$(get_absolute_path "$(pwd)" "${nextcloud_dir}")"
-  backup_dir="$(get_absolute_path "$(pwd)" "${backup_dir}")"
+  nextcloud_dir="$(get_absolute_path "${original_dir}" "${nextcloud_dir}")"
+  backup_dir="$(get_absolute_path "${original_dir}" "${backup_dir}")"
+  configphp="${nextcloud_dir}/config/config.php"
 
   # assign webserver user/group depending on owner of Nextclouds config.php:
-  temp="$(stat --printf="%U:%G" "${nextcloud_dir}/config/config.php")"
+  temp="$(stat --printf="%U:%G" "${configphp}")"
   htuser="${temp%%:*}"
   htgroup="${temp##*:}"
 
@@ -235,9 +239,9 @@ confirm_upgrade() {
 }
 
 get_absolute_path() {
-  # returns the absolute path to a given filepath which may be absolute or relative to the directory from where the script has been invoked
-  # this needs to be done because the script changes directories
-  # arguments: ${1}=directory; ${2}=path to file (relative to ${1} or absolute)
+# returns the absolute path to a given filepath which may be absolute or relative to the directory from where the script has been invoked
+# this needs to be done because the script changes directories
+# arguments: ${1}=directory; ${2}=path to file (relative to ${1} or absolute)
 
   if [[ "${2}" != /* ]]; then
     # change path of ${2} (file) relative to ${1} (dir) to absolute path and remove trailing slashes:
@@ -256,7 +260,7 @@ get_absolute_path() {
 locate_data_dir() {
 # retrieves location of Nextclouds data directory (we need to know that for eventually copying it to new Nextcloud directory)
 
-  nc_data_dir="$(get_nc_config_value "datadirectory")"
+  nc_data_dir="$(getvalue_from_configphp "datadirectory")"
 }
 
 maintenance_mode() {
@@ -300,6 +304,36 @@ get_nc_config_value() {
   echo "${value}"
 }
 
+getvalue_from_configphp() {
+# reads a line with a given paramter from config.php and echoes the parameters value
+# arguments: ${1} is name of value that shall be returned
+
+  # Notice: multi-line comments (/* ... */) are not recognized, if no marker at beginning of line. The first occurence of ${1} will be returned
+  # This might be a problem: because wrong value might be returned, if value is also present in a multi-line comment before the actual declaration in config.php!
+
+  local regex line
+
+  regex="^[[:space:]]*'${1}'.*"
+  while read -r line; do
+    [[ "${line}" =~ $regex ]] && break
+    line=""
+  done <"${configphp}"
+
+  # if parameter was found ($line is not empty) - manipulate $line to only return the value and nothing else:
+  if [[ "${line:-}" != "" ]]; then
+    if [[ "${line}" =~ ( true| false),$ ]]; then
+      # in case it is a boolean value (they are not surrounded by ''):
+      [[ "${line}" =~ true ]] && line="true"
+      [[ "${line}" =~ false ]] && line="false"
+    else
+      # value is not boolean - separate the value:
+      line=${line%\'*} # throw away end including last '
+      line=${line##*\'} # throw away beginning including last '
+    fi
+  fi
+  echo "${line:-}"
+}
+
 compress_backup() {
 # compresses backed up and moves compressed backup to backup folder
 # arguments:
@@ -311,10 +345,8 @@ compress_backup() {
 #                  sql  = SQL dump
 #       (timestamp and extension will be added in this function)
 
-  local original_dir compress_error
+  local compress_error
 
-  # store current directory (to be able to switch back):
-  original_dir="$(pwd)"
   # change to directory that contains the directory or file to be compressed:
   cd "${1%/*}"
 
@@ -413,7 +445,7 @@ backup_data_dir() {
   local regex explanation
 
   # check whether data directory is located inside nextcloud directory:
-  regex="^${nextcloud_dir}*"
+  regex="^${nextcloud_dir}.*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
     # data directory resides inside nextcloud directory:
     [[ -z "${exclude_data_directory:-}" ]] || explanation="- ignoring option '-ed'"
@@ -462,6 +494,7 @@ create_backup() {
 get_files() {
 # downloads Nextcloud archive, according SHA512 checksum and according PGP signature
 
+  cd "${temp_dir}"
   printf "%s" "+  downloading Nextcloud archive '${nextcloud_archive}', according checksum and PGP signature..."
   curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}"
   curl -sS -O "https://download.nextcloud.com/server/releases/${nextcloud_archive}.sha512"
@@ -558,7 +591,7 @@ copy_data() {
   local regex
 
   # check whether data directory is located inside nextcloud directory - if yes, copy it to new Nextcloud:
-  regex="^${nextcloud_dir}*"
+  regex="^${nextcloud_dir}.*"
   if [[ "${nc_data_dir}" =~ ${regex} ]]; then
     printf "%s" "+  copying datafolder (resides inside Nextclouds directory) to new Nextcloud directory..."
     cp -a "${nextcloud_dir}_${now}/data" "${nextcloud_dir}/"
@@ -616,11 +649,19 @@ copy_themes() {
 
 adjust_permissions() {
 # adjusts permissions for Nextcloud directory
+# arguments: $1 - if set to "datadir_as_well" adjust permissions also for Nextclouds data dir (this is for restoring data dir outside Nextcloud dir)
 
   printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
   chown -R ${htuser}:${htgroup} "${nextcloud_dir}"
   find "${nextcloud_dir}/" -type d -exec chmod 750 {} \;
   find "${nextcloud_dir}/" -type f -exec chmod 640 {} \;
+  if [[ "${1:-}" == "datadir_as_well" ]]; then
+    printf "%s\n" " done!"
+    printf "%s" "+  adjusting file ownership and permissions for data directory (outside of Nextcloud)..."
+    chown -R ${htuser}:${htgroup} "${nc_data_dir}"
+    find "${nc_data_dir}/" -type d -exec chmod 750 {} \;
+    find "${nc_data_dir}/" -type f -exec chmod 640 {} \;
+  fi
   printf "%s\n" " done!"
 }
 
@@ -659,11 +700,11 @@ print_footer() {
 }
 
 select_backup() {
-  # scan backup directory for available backups and let user choose which one to restore:
+# scan backup directory for available backups and let user choose which one to restore:
 
   local regex temp i sure
 
-  echo "+  Looking for backups in ${backup_dir}..."
+  echo "+  Looking for backups in ${backup_dir}/"
 
   i=0
   # regex matches nextcloud_dir backed up with ncupgrade:
@@ -715,30 +756,168 @@ select_backup() {
     fi
   done
 
-  # find out which compression method was used:
-  nc_backup_compression="tar.gz"
-  [[ "${backup_file[$n]}" =~ \.zip$ ]] && nc_backup_compression="zip"
+  # use zip, if files from backup end with .zip:
+  [[ "${backup_file[$n]}" =~ \.zip$ ]] && compression_method="zip"
+
   # assign filenames of according backup:
   nc_backup_dir="${backup_file[$n]}"
-  nc_backup_sql="${backup_file[$n]%_*}_sql.${nc_backup_compression}"
-  nc_backup_data="${backup_file[$n]%_*}_data.${nc_backup_compression}"
+  nc_backup_sql="${backup_file[$n]%_*}_sql.${compression_method}"
+  nc_backup_data="${backup_file[$n]%_*}_data.${compression_method}"
 }
 
 restore_nextcloud_dir() {
-  # restores nextcloud directory from backup
+# restores nextcloud directory from backup
 
-  # move eventually existing directory at to be restored location out of the way:
-  [[ -d "${nextcloud_dir}" ]] && rename_old_nextcloud
-  echo "+  after successfully restoring the backup you may want to delete folder ${nextcloud_dir}_${now}"
+  printf "%s" "+  restoring Nextcloud directory... "
+
+  # empty eventually existing directory at to be restored location:
+  [[ -d "${nextcloud_dir}" ]] && rm -r "${nextcloud_dir}"
 
   # unpack Nextcloud dir from backup to desired location:
-  printf "%s" "+  restoring Nextcloud directory from backup... "
-  if [[ "${nc_backup_compression}" == "tar.gz" ]]; then
+  if [[ "${compression_method}" == "tar.gz" ]]; then
     tar -xzf "${backup_dir}/${nc_backup_dir}" -C "${nextcloud_dir%/*}/"
-  elif [[ "${nc_backup_compression}" == "zip" ]]; then
+  elif [[ "${compression_method}" == "zip" ]]; then
     unzip -q "${backup_dir}/${nc_backup_dir}" -d "${nextcloud_dir%/*}/"
   fi
   printf "%s\n" "done!"
+}
+
+restore_nextcloud_data() {
+# restores nextcloud data directory (if found in backup and if residing outside of Nextclouds directory)
+
+  local regex
+
+  # find out whether data-directory is outside Nextclouds directory:
+  locate_data_dir
+  regex="^${nextcloud_dir}.*"
+  if [[ "${nc_data_dir}" =~ ${regex} ]]; then
+    # data directory resides inside nextcloud directory:
+    echo "+  data directory is located inside Nextcloud directory. Nothing to do."
+  else
+    if [[ -r "${backup_dir}/${nc_backup_data}" ]]; then
+      # empty eventually existing data dir:
+      rm -r "${nc_data_dir}"
+      # unpack Nextcloud dir from backup to desired location:
+      printf "%s" "+  restoring data directory ${nc_data_dir} (outside Nextcloud dir)... "
+      if [[ "${compression_method}" == "tar.gz" ]]; then
+        tar -xzf "${backup_dir}/${nc_backup_data}" -C "${nc_data_dir%/*}/"
+      elif [[ "${compression_method}" == "zip" ]]; then
+        unzip -q "${backup_dir}/${nc_backup_data}" -d "${nc_data_dir%/*}/"
+      fi
+      printf "%s\n" "done!"
+
+      # set variable so that permissions will be adjusted for data dir as well:
+      adjust_permissions_datadir="datadir_as_well"
+
+    else
+      # print short message that data directory is located outside Nextcloud and no backup has been found:
+      echo "+  no backup of data directory found (located outside of Nextcloud directory)."
+    fi
+  fi
+}
+
+restore_nextcloud_database() {
+# restores nextcloud database from backup
+
+  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD dump_error
+
+  printf "%s" "+  restoring Nextcloud database... "
+
+  # extract backup of database (path to extracted file will be "${temp_dir}/nextcloud-sql.bak"):
+  if [[ "${compression_method}" == "tar.gz" ]]; then
+    tar -xzf "${backup_dir}/${nc_backup_sql}" -C "${temp_dir}/"
+  elif [[ "${compression_method}" == "zip" ]]; then
+    unzip -q "${backup_dir}/${nc_backup_sql}" -d "${temp_dir}/"
+  fi
+
+  # find out which type of database is used (SQLite3, MySQL/MariaDB, PostgreSQL)
+  dbtype="$(getvalue_from_configphp "dbtype")"
+
+  if [[ "$dbtype" != "sqlite3" ]]; then
+    # if database is not SQLite3 - we also need more things to know (dbhost, dbname, dbuser, dbpassword)
+    dbhost="$(getvalue_from_configphp "dbhost")"
+    dbname="$(getvalue_from_configphp "dbname")"
+    dbuser="$(getvalue_from_configphp "dbuser")"
+    dbpassword="$(getvalue_from_configphp "dbpassword")"
+
+    # check whether dbhost contains socket (e.g. 'localhost:/path/to/socket') or portnumber (e.g. 'localhost:3306')
+    #   and store it for commands:
+    if [[ "${dbhost}" =~ ^.+:/.+$ ]]; then
+      # dbhost contains socket after hostname (e.g. 'localhost:/var/run/mysqld/mysqld.sock'):
+      if [[ "${dbtype}" == "mysql" ]]; then
+        # specify socket and host for MySQL/MariaDB
+        dbprotocol="--socket=${dbhost#*:}"
+        dbhost="${dbhost%%:*}"
+        # check for utf8mb4 value in config.php and assign according commands for recreating the database:
+        mysql_utf8mb4="$(getvalue_from_configphp "mysql.utf8mb4")"
+        [[ "${mysql_utf8mb4:-}" == "true" ]] && mysql_utf8mb4="CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
+        [[ "${mysql_utf8mb4:-}" != "true" ]] && mysql_utf8mb4=""
+     elif [[ "${dbtype}" == "pgsql" ]]; then
+        # use socket as host for PostgreSQL:
+        dbprotocol=""
+        dbhost="${dbhost#*:}"
+      fi
+    elif [[ "${dbhost}" =~ ^.+:[[:digit:]]+$ ]]; then
+      # dbhost contains portnumber after hostname (e.g. '127.0.0.1:3306'):
+      dbprotocol="--port=${dbhost#*:}"
+      dbhost="${dbhost%%:*}"
+    else
+      # dbhost contains only hostname - use empty value to tell database-command to use default value:
+      dbprotocol=""
+    fi
+    if [[  "$dbtype" == "mysql" ]]; then
+      # delete and recreate MySQL/MariaDB database:
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol}" -se "DROP DATABASE IF EXISTS ${dbname}"
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol}" -se "CREATE DATABASE ${dbname} ${mysql_utf8mb4}"
+
+      # restore tables from backup in recreated database:
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol}" "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
+
+    elif [[ "$dbtype" == "pgsql" ]]; then
+      # delete and recreate PostgreSQL database:
+      # NOTICE 1: psql in my environment doesn't require a password for the following commands.
+      # If authentication is required, enter the password in the next line (PGPASSWORD will very likely be different from ${dbpassword} in Nextclouds config.php):
+      PGPASSWORD=""
+      # NOTICE 2: the commands in the official documentation do not work in my setup. I adapted them to work in my environment. Take note of alternative commands:
+      # alternative command: dropdb --if-exists "${dbname}"
+      PGPASSWORD="${pgsqlpassword:-}" psql -h ${dbhost} ${dbprotocol} -d postgres -c "DROP DATABASE IF EXISTS \"${dbname}\";"
+      # alternative command: createdb --owner="${dbuser}" "${dbname}"
+      PGPASSWORD="${pgsqlpassword:-}" psql -h ${dbhost} ${dbprotocol} -d postgres -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
+
+      # restore tables from backup in recreated database
+      # NOTICE 3: here ${dbpassword} from Nextclouds config.php is needed!:
+      PGPASSWORD="${dbpassword}" pg_restore -c -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} "${temp_dir}/nextcloud-sql.bak"
+
+    fi
+    # unset sensitive data:
+    unset PGPASSWORD dbpassword dbuser
+
+  elif [[ "$dbtype" == "sqlite3" ]]; then
+
+    # delete sqlite3 database:
+    rm "${nc_data_dir}/owncloud.db"
+    # restore tables from backup in new database file:
+    sqlite3 "${nc_data_dir}/owncloud.db" < "${temp_dir}/nextcloud-sql.bak"
+
+  fi
+
+  # remove extracted database-backup from $temp_dir:
+  rm "${temp_dir}/nextcloud-sql.bak"
+
+  printf "%s\n" "done!"
+}
+
+maintenance_data_fingerprint() {
+# changes the ETag for all files. Available since Nextcloud 12.0
+
+  nc_version="$(getvalue_from_configphp "versionstring")"
+  main_version="${nc_version%%.*}"
+
+  if [[ ${main_version} -ge 12 ]]; then
+    printf "%s" "+  changing the ETag for all files (maintenance:data-fingerprint)... "
+    ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:data-fingerprint
+    printf "%s\n" "done!"
+  fi
 }
 
 print_help() {
@@ -832,7 +1011,7 @@ done
 preparations
 
 if [[ "${only_backup:-}" == "yes" ]]; then
-  # fond option -ob: only create a backup and then exit:
+  # found option -ob: only create a backup and then exit:
   echo "+  found option -ob: will only back up your Nextcloud"
   check_working_occ
   locate_data_dir
@@ -853,12 +1032,17 @@ if [[ "${restore_backup:-}" == "yes" ]]; then
   # found option -rb: restore backup and then exit:
   echo "+  found option -rb: will only restore your Nextcloud"
   select_backup
+  create_temp_dir
   restore_nextcloud_dir
-  # restore_nextcloud_sql
-  # restore_nextcloud_data
-  adjust_permissions
+  restore_nextcloud_data
+  restore_nextcloud_database
+  adjust_permissions "${adjust_permissions_datadir:-}"
+  maintenance_data_fingerprint
   maintenance_mode "off"
-  echo "+  option -rb not yet completely implemented!"
+  rm -r /tmp/ncupgrade
+  echo "+  restoring backup completed!"
+  echo "+"
+  echo "+++++++++++++++++++++++++++++++++++++"
   exit 0
 fi
 

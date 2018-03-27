@@ -63,6 +63,9 @@ Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directo
 -ob | --only-backup
        Only create a backup of Nextcloud and then quit. No Upgrade will be done.
        When run with this option, options -k/-w will be ignored
+-rb | --restore-backup
+       restores a backup which was created with ncupgrade. The script will look for backups in the
+       backup-directory given via option -bd, or in folder 'nextcloud_backups/' in script's directory.
 -utv| --upgrade-to-version X.X.X
        Upgrade to specific version X.X.X instead of upgrading to the latest available possible.
        Downgrading as well as skipping major releases is not supported.
