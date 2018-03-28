@@ -1,4 +1,4 @@
-vX.X.X (XX.XX.XXXX)
+v0.3.0 (28.03.2018)
 - added: option -l to set less restrictive file permissions for shared hosting
 - added: option -rb | --restore-backup
 - added: manual steps for upgrade to Nextcloud 13
