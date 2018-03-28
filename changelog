@@ -1,7 +1,8 @@
 vX.X.X (XX.XX.XXXX)
 - added: option -rb | --restore-backup
+- added: manual steps for upgrade to Nextcloud 13
 - changed: read Nextclouds configuration from config.php instead of using occ
-- minor bugfixes (regular expressions)
+- fixed: minor bugfixes (regular expressions)
 - improved: code readability
 
 v0.2.0 (23.03.2018)

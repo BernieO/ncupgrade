@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-5 (27.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-6 (28.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -663,6 +663,26 @@ upgrade_nextcloud() {
   ${php_command} php "${nextcloud_dir}/occ" upgrade
 }
 
+manual_steps() {
+# performs manual steps during upgrade
+
+  local main_version
+
+  # find out main version of freshly upgraded Nextcloud to perform according manual steps:
+  main_version="$(getvalue_from_configphp "version")"
+  main_version="${main_version%%.*}"
+
+  if [[ ${main_version} -eq 13 ]]; then
+    # perform manual steps for Nextcloud 13 according to:
+    # https://docs.nextcloud.com/server/13/admin_manual/maintenance/upgrade.html#manual-steps-during-upgrade
+    echo "+  performing manual steps after upgrade for Nextcloud 13:"
+    echo "+  1. adding new index to share table:"
+    ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indice
+    echo "+  2. switch to bigint for file ID's in the file cache table:"
+    ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
+  fi
+}
+
 clean_up() {
 # cleans up the mess
 
@@ -785,7 +805,7 @@ restore_nextcloud_data() {
   else
     if [[ -r "${backup_dir}/${nc_backup_data}" ]]; then
       # delete eventually existing data dir:
-      rm -r "${nc_data_dir}"
+      [[ -d "${nc_data_dir}" ]] && rm -r "${nc_data_dir}"
       # unpack Nextcloud dir from backup to desired location:
       printf "%s" "+  restoring data directory ${nc_data_dir} (outside Nextcloud dir)... "
       if [[ "${compression_method}" == "tar.gz" ]]; then
@@ -801,6 +821,9 @@ restore_nextcloud_data() {
     else
       # print short message that data directory is located outside Nextcloud and no backup has been found:
       echo "+  no backup of data directory found (located outside of Nextcloud directory)."
+      # set variable to do a filescan:
+      scan_files="yes"
+      [[ -d "${nc_data_dir}" ]] || data_dir_missing="yes" # data directory is neither in backup nor existing at configured location!
     fi
   fi
 }
@@ -898,14 +921,33 @@ restore_nextcloud_database() {
 
 maintenance_data_fingerprint() {
 # changes the ETag for all files. Available since Nextcloud 12.0
+# see: https://docs.nextcloud.com/server/12/admin_manual/maintenance/restore.html
 
-  nc_version="$(getvalue_from_configphp "version")"
-  main_version="${nc_version%%.*}"
+  local main_version
+
+  main_version="$(getvalue_from_configphp "version")"
+  main_version="${main_version%%.*}"
+  # only run command if Nextcloud >= 12:
   if [[ ${main_version} -ge 12 ]]; then
     printf "%s" "+  changing the ETag for all files (maintenance:data-fingerprint)... "
     ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:data-fingerprint
     printf "%s\n" "done!"
   fi
+}
+
+files_scan_all() {
+# deletes file cache and run file scan
+# arguments: $1 - message why filescan was invoked
+
+  echo "+  ${1}:"
+  echo "+"
+
+  # cleanup file cache:
+  ${php_command} php "${nextcloud_dir}/occ" files:cleanup
+  # scan all files:
+  ${php_command} php "${nextcloud_dir}/occ" files:scan --all
+
+  echo "+"
 }
 
 print_help() {
@@ -1025,8 +1067,11 @@ if [[ "${restore_backup:-}" == "yes" ]]; then
   restore_nextcloud_data
   restore_nextcloud_database
   adjust_permissions "${adjust_permissions_datadir:-}"
+  # error and exit, if data directory is outside nextcloud_dir, not backed up and missing at configured location:
+  [[ "${data_dir_missing:-}" == "yes" ]] && error_exit "ERROR: Nextclouds data directory is not present at configured location:" "${nc_data_dir}" "Nextcloud won't work until the data directory is restored!"
   maintenance_data_fingerprint
   maintenance_mode "off"
+  [[ "${scan_files:-}" == "yes" ]] && files_scan_all "rescanning all files due to missing backup of data directory"
   rm -r /tmp/ncupgrade
   echo "+  restoring backup completed!"
   echo "+"
@@ -1059,6 +1104,7 @@ if [[ "${upgrade_to_version}" == "${nc_version}" ]]; then
 else
   upgrade_nextcloud
 fi
+manual_steps
 maintenance_mode "off"
 clean_up
 print_footer
