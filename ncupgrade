@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-7 (28.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-8 (28.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -669,7 +669,7 @@ upgrade_nextcloud() {
 manual_steps() {
 # performs manual steps during upgrade
 
-  local main_version
+  local main_version dbtype
 
   # find out main version of freshly upgraded Nextcloud to perform according manual steps:
   main_version="$(getvalue_from_configphp "version")"
@@ -681,8 +681,19 @@ manual_steps() {
     echo "+  performing manual steps after upgrade for Nextcloud 13:"
     echo "+  1. adding new index to share table:"
     ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indices
-    echo "+  2. switch to bigint for file ID's in the file cache table:"
-    ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
+
+    # find out which type of database is used (SQLite3, MySQL/MariaDB, PostgreSQL)
+    dbtype="$(getvalue_from_configphp "dbtype")"
+    if [[ "${dbtype}" == "sqlite3" ]]; then
+      # switch to bigint not necessary for SQLite3 database, because sqlite3 uses dynamic Integer that can hold everything
+      #     from 1 byte (tinyint) to 8 byte (bigint). See: http://www.sqlite.org/datatype3.html
+      # SQLite doesn't care, so nothing to do:
+      echo "+  2. skipping switch to bigint for file ID's in the file cache table: pointless for SQLite3"
+    else
+      # switch to bigint for MySQL/MariaDB and PostgreSQL:
+      echo "+  2. switch to bigint for file ID's in the file cache table:"
+      ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
+    fi
   fi
 }
 
@@ -1105,14 +1116,12 @@ copy_3rd_party_apps
 copy_themes
 adjust_permissions
 [[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "start"
-# only run upgrade script if installed version differs from previously installed version (possible via option -utv):
-if [[ "${upgrade_to_version}" == "${nc_version}" ]]; then
-  echo "+  no need to run upgrade script, because exactly same version has been installed"
-else
-  upgrade_nextcloud
-fi
+# run upgrade script IN maintenance-mode if installed version differs from previously installed version:
+[[ "${upgrade_to_version}" != "${nc_version}" ]] && upgrade_nextcloud
 manual_steps
 maintenance_mode "off"
+# run upgrade script AFTER switching off maintenance mode if version is same like previously installed version (possible via option -utv):
+[[ "${upgrade_to_version}" == "${nc_version}" ]] && upgrade_nextcloud
 clean_up
 print_footer
 
