@@ -1,4 +1,5 @@
 vX.X.X (XX.XX.XXXX)
+- added: option -l to set file permissions less restrictive for shared hosting
 - added: option -rb | --restore-backup
 - added: manual steps for upgrade to Nextcloud 13
 - changed: read Nextclouds configuration from config.php instead of using occ

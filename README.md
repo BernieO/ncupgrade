@@ -60,6 +60,12 @@ Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directo
        during upgrade, this might not always be possible (for example in shared hosting environments or if other
        webservices running on the same webserver need to stay online).   
        Either this option or -w WEBSERVER need to be passed to the script.
+-l  | --less-restrictive-permissions
+       after upgrading or restoring from a backup ncupgrade adjusts access permissions for Nextclouds directories
+       and files according to the documentation to 750 (directories) and 640 (files). In certain environments
+       (e.g. shared hosting at uberspace) this might be to restrictive resulting in the webserver not being able
+       to read and serve files. Use this option to set less restrictive permissions (755 for directories and
+       644 for files).
 -ob | --only-backup
        Only create a backup of Nextcloud and then quit. No Upgrade will be done.
        When run with this option, options -k/-w will be ignored

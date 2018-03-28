@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.2.0-6 (28.03.2018), AGPL-3.0"
+ncupgrade_version="0.2.0-7 (28.03.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -49,6 +49,9 @@ load_default_values() {
 
   backup_dir="nextcloud_backups"
   compression_method="tar.gz"
+  # permissions for directories and files (user can change via option '-l' to 755/644)
+  permd="750"
+  permf="640"
 }
 
 preparations() {
@@ -644,14 +647,14 @@ adjust_permissions() {
 
   printf "%s" "+  adjusting file ownership and permissions (may take a while)..."
   chown -R ${htuser}:${htgroup} "${nextcloud_dir}"
-  find "${nextcloud_dir}/" -type d -exec chmod 750 {} \;
-  find "${nextcloud_dir}/" -type f -exec chmod 640 {} \;
+  find "${nextcloud_dir}/" -type d -exec chmod ${permd} {} \;
+  find "${nextcloud_dir}/" -type f -exec chmod ${permf} {} \;
   if [[ "${1:-}" == "datadir_as_well" ]]; then
     printf "%s\n" " done!"
     printf "%s" "+  adjusting file ownership and permissions for data directory (outside of Nextcloud)..."
     chown -R ${htuser}:${htgroup} "${nc_data_dir}"
-    find "${nc_data_dir}/" -type d -exec chmod 750 {} \;
-    find "${nc_data_dir}/" -type f -exec chmod 640 {} \;
+    find "${nc_data_dir}/" -type d -exec chmod ${permd} {} \;
+    find "${nc_data_dir}/" -type f -exec chmod ${permf} {} \;
   fi
   printf "%s\n" " done!"
 }
@@ -677,7 +680,7 @@ manual_steps() {
     # https://docs.nextcloud.com/server/13/admin_manual/maintenance/upgrade.html#manual-steps-during-upgrade
     echo "+  performing manual steps after upgrade for Nextcloud 13:"
     echo "+  1. adding new index to share table:"
-    ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indice
+    ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indices
     echo "+  2. switch to bigint for file ID's in the file cache table:"
     ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
   fi
@@ -1007,16 +1010,20 @@ do
     -k | --keep-webserver-running )
       stop_webserver="no"
     ;;
+    -l | --less-restrictive-permissions )
+      permd="755"
+      permf="644"
+    ;;
     -ob | --only-backup )
       only_backup="yes"
+    ;;
+    -rb | --restore-backup )
+       restore_backup="yes"
     ;;
     -utv | --upgrade-to-version )
       shift
       check_argument "${1:-}"
       upgrade_to_version="${1:-}"
-    ;;
-    -rb | --restore-backup )
-       restore_backup="yes"
     ;;
     -w | --webserver )
       shift
