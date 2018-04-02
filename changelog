@@ -1,4 +1,4 @@
-vX.X.X (XX.XX.XXXX)
+v0.3.1 (02.04.2018)
 - fixed: bug in restoring backup when using PostgreSQL
 
 v0.3.0 (28.03.2018)
