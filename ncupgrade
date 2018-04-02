@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.3.0 (28.03.2018), AGPL-3.0"
+ncupgrade_version="0.3.0-1 (02.04.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -903,16 +903,21 @@ restore_nextcloud_database() {
       # delete and recreate PostgreSQL database:
       # NOTICE 1: psql in my environment doesn't require a password for the following commands.
       # If authentication is required, enter the password in the next line (PGPASSWORD will very likely be different from ${dbpassword} in Nextclouds config.php):
-      PGPASSWORD=""
+      pgsqlpassword=""
       # NOTICE 2: the commands in the official documentation do not work in my setup. I adapted them to work in my environment. Take note of alternative commands:
+      # delete database:
+      # documentation: PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "DROP DATABASE \"${dbname}\";"
       # alternative command: dropdb --if-exists "${dbname}"
-      PGPASSWORD="${pgsqlpassword:-}" psql -h ${dbhost} ${dbprotocol} -d postgres -c "DROP DATABASE IF EXISTS \"${dbname}\";"
+      PGPASSWORD="${pgsqlpassword:-}" psql -q -h ${dbhost} ${dbprotocol} -d postgres -c "DROP DATABASE IF EXISTS \"${dbname}\";"
+      # create database:
+      # documentation: PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "CREATE DATABASE \"${dbname}\";"
       # alternative command: createdb --owner="${dbuser}" "${dbname}"
-      PGPASSWORD="${pgsqlpassword:-}" psql -h ${dbhost} ${dbprotocol} -d postgres -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
+      PGPASSWORD="${pgsqlpassword:-}" psql -q -h ${dbhost} ${dbprotocol} -d postgres -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
 
       # restore tables from backup in recreated database
       # NOTICE 3: here ${dbpassword} from Nextclouds config.php is needed!:
-      PGPASSWORD="${dbpassword}" pg_restore -c -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} "${temp_dir}/nextcloud-sql.bak"
+      # documentation: PGPASSWORD="${dbpassword}" pg_restore -c -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} "${temp_dir}/nextcloud-sql.bak"
+      PGPASSWORD="${dbpassword}" psql -q -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} -f "${temp_dir}/nextcloud-sql.bak" > /dev/null # supress lots of output
 
     fi
     # unset sensitive data:
