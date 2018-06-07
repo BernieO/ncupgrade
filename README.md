@@ -49,10 +49,14 @@ Paths (FILE / DIRECTORY) are absolute paths or relative paths to working directo
 -bd | --backup-directory DIRECTORY
        Use directory DIRECTORY to store backups.
        If this option is not given, folder 'nextcloud_backups/' in script's directory is created and used.
+-ea | --exclude-apps
+       Do not copy missing apps from the previous installation to the upgraded installation.
 -ed | --exclude-data-directory
        In case the data directory is located outside of Nextclouds directory it can be excluded from backup with
        this option. The update will not touch the data directory. This option will be ignored, if the data
        directory resides inside Nextclouds directory.
+-et | --exclude-themes
+       Do not copy missing themes from the previous installation to the upgraded installation.
 -h  | --help
        Print version number and a short help text
 -k  | --keep-webserver-running

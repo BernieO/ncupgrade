@@ -25,7 +25,7 @@ set -euo pipefail
 # set -x
 
 # ncupgrade version:
-ncupgrade_version="0.3.1 (02.04.2018), AGPL-3.0"
+ncupgrade_version="0.3.1-1 (07.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -1016,8 +1016,14 @@ do
       check_argument "${1:-}"
       backup_dir="${1}"
     ;;
+    -ea | --exclude-apps )
+      exclude_apps="yes"
+    ;;
     -ed | --exclude-data-directory )
       exclude_data_directory="yes"
+    ;;
+    -et | --exclude-themes )
+      exclude_themes="yes"
     ;;
     -h | --help )
       print_help
@@ -1117,8 +1123,8 @@ rename_old_nextcloud
 move_new_nextcloud
 copy_config
 copy_data
-copy_3rd_party_apps
-copy_themes
+[[ "${exclude_apps:-}" == "yes" ]] || copy_3rd_party_apps
+[[ "${exclude_themes:-}" == "yes" ]] || copy_themes
 adjust_permissions
 [[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "start"
 # run upgrade script IN maintenance-mode if installed version differs from previously installed version:
