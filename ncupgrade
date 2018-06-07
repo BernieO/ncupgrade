@@ -21,11 +21,8 @@
 
 set -euo pipefail
 
-# for debugging purposes:
-# set -x
-
 # ncupgrade version:
-ncupgrade_version="0.3.1-2 (07.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0 (07.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS

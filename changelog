@@ -1,3 +1,8 @@
+v0.4.0 (07.06.2018)
+- added: option -ea|--exclude-apps to prevent missing apps being copied from old to upgraded installation
+- added: option -et|--exclude-themes to prevent missing themes being copied from old to upgraded installation
+- fixed: catching of error, if canonicalizing path was not possible
+
 v0.3.1 (02.04.2018)
 - fixed: bug in restoring backup when using PostgreSQL
 
