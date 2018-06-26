@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-2 (26.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-3 (26.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -289,7 +289,7 @@ create_temp_dir() {
   cd "${temp_dir}"
 
   # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
-  rm -rf *
+  rm -rf ./*
 }
 
 getvalue_from_configphp() {
