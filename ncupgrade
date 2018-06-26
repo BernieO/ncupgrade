@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0 (07.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-1 (26.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -117,7 +117,7 @@ check_working_occ() {
   nc_version="${nc_version##* }"
 
   # exclude ownCloud (check user documentation for word "Nextcloud" or "ownCloud":
-  while read line; do
+  while read -r line; do
     [[ "${line}" =~ Nextcloud|ownCloud ]] && break
   done < ${nextcloud_dir}/core/doc/user/index.html
   [[ "${line}" =~ Nextcloud ]] || error_exit "ERROR: this seems to be an ownCloud installation." "ownCloud is not supported!"
@@ -144,7 +144,7 @@ check_available_version() {
   }
 
   # download and store website with all releases and check for lines containing regex_current or regex_next:
-  while read line; do
+  while read -r line; do
     [[ "${line}" =~ ${regex_current} ]] && {
       # store line that contains main version number of installed Nextcloud. Last result will be latest available version:
       latest_available_current="${line##*nextcloud-}"
