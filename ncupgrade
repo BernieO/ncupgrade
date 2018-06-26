@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-1 (26.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-2 (26.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -741,7 +741,7 @@ select_backup() {
   done
 
   # exit with error, if  not backups have been found:
-  [[ $i > 0 ]] || error_exit "ERROR: no backups in backup directory found!"
+  [[ $i -gt 0 ]] || error_exit "ERROR: no backups in backup directory found!"
 
   # let user choose which backup to restore:
   while read -r -n 2 -p "+  Enter number of backup to be restored (1-${i}): " n; do
