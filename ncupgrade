@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-4 (26.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-5 (29.06.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -719,17 +719,16 @@ print_footer() {
 select_backup() {
 # scan backup directory for available backups and let user choose which one to restore:
 
-  local regex temp i sure
+  local regex file temp i sure
 
   echo "+  Looking for backups in ${backup_dir}/"
-
   i=0
   # regex matches nextcloud_dir backed up with ncupgrade:
-  regex="^nextcloud-[[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}_[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}-[[:digit:]]{2}\.[[:digit:]]{2}_dir\.(tar\.gz|zip)$"
-  for file in $(ls -t "${backup_dir}"); do
+  regex="^.*/nextcloud-[[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}_[[:digit:]]{4}\.[[:digit:]]{2}\.[[:digit:]]{2}-[[:digit:]]{2}\.[[:digit:]]{2}_dir\.(tar\.gz|zip)$"
+  for file in "${backup_dir}"/*; do
     if [[ "${file}" =~ ${regex} ]]; then
       i=$((i+1))
-      backup_file[$i]="${file}"
+      backup_file[$i]="${file##*/}"
       temp="${file##*nextcloud-}"
       backup_vers[$i]="${temp%%_*}"
       temp="${temp#*_}"
@@ -741,7 +740,7 @@ select_backup() {
   done
 
   # exit with error, if  not backups have been found:
-  [[ $i -gt 0 ]] || error_exit "ERROR: no backups in backup directory found!"
+  [[ ${i} -gt 0 ]] || error_exit "ERROR: no backups in backup directory found!"
 
   # let user choose which backup to restore:
   while read -r -n 2 -p "+  Enter number of backup to be restored (1-${i}): " n; do

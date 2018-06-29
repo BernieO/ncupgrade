@@ -1,3 +1,10 @@
+vx.x.x (xx.xx.xxxx)
+- fixed: don't interpret backslashes when reading input
+- fixed: don't use string comparison for comparing integers
+- fixed: use path for command to remove files
+- fixed: use double quotes to prevent globbing and word splitting
+- fixed: use globs instead of iterating over ls output
+
 v0.4.0 (07.06.2018)
 - added: option -ea|--exclude-apps to prevent missing apps being copied from old to upgraded installation
 - added: option -et|--exclude-themes to prevent missing themes being copied from old to upgraded installation
