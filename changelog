@@ -1,4 +1,5 @@
 vx.x.x (xx.xx.xxxx)
+- added: print notice, if user running the script can't read the full path to necessary files
 - fixed: don't interpret backslashes when reading input
 - fixed: don't use string comparison for comparing integers
 - fixed: use path for command to remove files

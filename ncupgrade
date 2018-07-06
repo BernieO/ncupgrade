@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-5 (29.06.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-6 (06.07.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -246,10 +246,10 @@ get_absolute_path() {
   local absolute_path
   if [[ "${2}" != /* ]]; then
     # change path of ${2} (file) relative to ${1} (dir) to absolute path and remove trailing slashes:
-    absolute_path="$(readlink -f "${1}/${2}")" || error_exit "ERROR: path '${1}/${2}' can't be canonicalized" "Check given path!"
+    absolute_path="$(readlink -vf "${1}/${2}")" || error_exit "ERROR: path '${1}/${2}' can't be canonicalized" "I need to be able to read the full path." "Check given path!"
   else
     # if ${2} contains already absolute path, then only remove trailing slashes:
-    absolute_path="$(readlink -f "${2}")" || error_exit "ERROR: path '${2}' can't be canonicalized" "Check given path!"
+    absolute_path="$(readlink -vf "${2}")" || error_exit "ERROR: path '${2}' can't be canonicalized" "I need to be able to read the full path." "Check given path!"
   fi
   echo "${absolute_path}"
 }
