@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-9 (06.07.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-10 (06.07.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -341,15 +341,15 @@ compress_backup() {
   # compress backup using the configured method (zip or tar.gz):
   if [[ "${compression_method}" == "zip" ]]; then
     # use zip to compress file or directory:
-    zip -r -q "${2}_${now}_${3}.zip" "${1##*/}" || compress_error="1"
+    zip -r -q "${2}_${now}_${3}.zip" "${1##*/}" || compress_error="$?"
   else
     # use "tar.gz" as compression_method, in case invalid value was entered:
     compression_method="tar.gz"
     # use tar.gz to compress folder with backed up files:
-    tar -czf "${2}_${now}_${3}.tar.gz" "${1##*/}" || compress_error="1"
+    tar -czf "${2}_${now}_${3}.tar.gz" "${1##*/}" || compress_error="$?"
   fi
   # print error message, if an error occured
-  [[ "${compress_error:-}" == "1" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
+  [[ "${compress_error:-0}" != "0" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
 
   # change back to original directory:
   cd "${original_dir}"
@@ -409,7 +409,7 @@ backup_database() {
     sqlite3 "${nc_data_dir}/owncloud.db" .dump > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
   fi
 
-  [[ "${dump_error}" != "0" ]] && error_exit "ERROR: could not create dump of database."
+  [[ "${dump_error:-0}" != "0" ]] && error_exit "ERROR: could not create dump of database."
 
   # compress database backup and move it to backup folder:
   compress_backup "${temp_dir}/nextcloud-sql.bak" "${backup_dir}/nextcloud-${nc_version}" "sql"
