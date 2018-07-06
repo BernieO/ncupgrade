@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.0-6 (06.07.2018), AGPL-3.0"
+ncupgrade_version="0.4.0-7 (06.07.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -341,16 +341,12 @@ compress_backup() {
   # compress backup using the configured method (zip or tar.gz):
   if [[ "${compression_method}" == "zip" ]]; then
     # use zip to compress file or directory:
-    zip -r -q "${2}_${now}_${3}.zip" "${1##*/}"
-    # store error, to be able to print error message:
-    [[ $? -eq 0 ]] || compress_error="1"
+    zip -r -q "${2}_${now}_${3}.zip" "${1##*/}" || compress_error="1"
   else
     # use "tar.gz" as compression_method, in case invalid value was entered:
     compression_method="tar.gz"
     # use tar.gz to compress folder with backed up files:
-    tar -czf "${2}_${now}_${3}.tar.gz" "${1##*/}"
-    # store error, to be able to print error message:
-    [[ $? -eq 0 ]] || compress_error="1"
+    tar -czf "${2}_${now}_${3}.tar.gz" "${1##*/}" || compress_error="1"
   fi
   # print error message, if an error occured
   [[ "${compress_error:-}" == "1" ]] && error_exit "ERROR: Compressing the files produced an error. See lines right above."
