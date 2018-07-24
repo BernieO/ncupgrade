@@ -1,3 +1,6 @@
+v0.4.2 (24.07.2018)
+- fixed: backup of MySQL/PostgreSQL database failed, if no socket or port configured in config.php
+
 v0.4.1 (06.07.2018)
 - added: print notice, if user running the script can't read the full path to necessary files
 - fixed: proper handling of compression errors and database dump errors

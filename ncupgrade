@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.1 (06.07.2018), AGPL-3.0"
+ncupgrade_version="0.4.2 (24.07.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -389,17 +389,26 @@ backup_database() {
       # dbhost contains portnumber after hostname (e.g. '127.0.0.1:3306'):
       dbprotocol="--port=${dbhost#*:}"
       dbhost="${dbhost%%:*}"
-    else
-      # dbhost contains only hostname - use empty value to tell database-command to use default value:
-      dbprotocol=""
     fi
 
     if [[  "$dbtype" == "mysql" ]]; then
       # dump MySQL/MariaDB database:
-      mysqldump --single-transaction -h "${dbhost}" "${dbprotocol}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      if [[ -z "${dbprotocol:-}" ]]; then
+        # no port or socket given in config.php:
+        mysqldump --single-transaction -h "${dbhost}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      else
+        # using port or socket as configured in config.php:
+        mysqldump --single-transaction -h "${dbhost}" "${dbprotocol}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      fi
     elif [[ "$dbtype" == "pgsql" ]]; then
       # dump PostgreSQL database:
-      PGPASSWORD="${dbpassword}" pg_dump "${dbname}" -h "${dbhost}" "${dbprotocol}" -U "${dbuser}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      if [[ -z "${dbprotocol:-}" ]]; then
+        # no port or socket given in config.php:
+        PGPASSWORD="${dbpassword}" pg_dump "${dbname}" -h "${dbhost}" -U "${dbuser}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      else
+        # using port or socket as configured in config.php:
+        PGPASSWORD="${dbpassword}" pg_dump "${dbname}" -h "${dbhost}" "${dbprotocol}" -U "${dbuser}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      fi
     fi
     # unset sensitive data:
     unset PGPASSWORD dbpassword dbuser
