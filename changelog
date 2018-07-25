@@ -1,3 +1,6 @@
+vX.X.X (XX.XX.XXXX)
+- added: if possible disable maintenance mode in case of error
+
 v0.4.2 (24.07.2018)
 - fixed: backup of MySQL/PostgreSQL database failed, if no socket or port configured in config.php
 

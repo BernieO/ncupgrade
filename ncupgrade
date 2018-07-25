@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.2 (24.07.2018), AGPL-3.0"
+ncupgrade_version="0.4.2-1 (25.07.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -35,6 +35,8 @@ error_exit() {
   for message in "$@"; do
     echo "-- ${message}" >&2
   done
+  # disable maintenance mode if possible:
+  [[ "${disable_maintenance_possible:-}" == "yes" ]] && maintenance_mode "off"
   echo "-- ncupgrade: Exiting." >&2
 
   # exit with error code 1
@@ -265,8 +267,15 @@ maintenance_mode() {
 
   local text
 
-  [[ "${1}" == "on" ]] && text="enabl"
-  [[ "${1}" == "off" ]] && text="disabl"
+  if [[ "${1}" == "on" ]]; then
+    text="enabl"
+    # to know whether it is necessary/possible to disable maintenance mode if an error occurs:
+    disable_maintenance_possible="yes"
+  elif [[ "${1}" == "off" ]]; then
+    text="disabl"
+    # to know whether it is necessary/possible to disable maintenance mode if an error occurs:
+    disable_maintenance_possible="no"
+  fi
   printf "%s" "+  ${text}ing Nextclouds maintenance mode... "
   ${php_command} php "${nextcloud_dir}/occ" --no-warnings maintenance:mode --"${1}"
 }
@@ -1110,6 +1119,8 @@ maintenance_mode "on"
 create_temp_dir
 create_backup
 download_nextcloud
+# from here on it's not a good idea to disable maintenance mode in case of an error until upgrade is finished:
+disable_maintenance_possible="no"
 [[ "${stop_webserver}" == "yes" ]] && start_stop_webserver "stop"
 rename_old_nextcloud
 move_new_nextcloud
