@@ -1,6 +1,7 @@
 vX.X.X (XX.XX.XXXX)
 - added: if possible disable maintenance mode in case of error
 - fixed: restoring backup of PostgreSQL database failed, if no socket or port configured in config.php
+- improved: also perform manual steps when upgrading to Nextcloud > 13
 
 v0.4.2 (24.07.2018)
 - fixed: backup of MySQL/PostgreSQL database failed, if no socket or port configured in config.php

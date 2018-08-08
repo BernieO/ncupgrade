@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.2-2 (25.07.2018), AGPL-3.0"
+ncupgrade_version="0.4.2-3 (08.08.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -677,11 +677,11 @@ manual_steps() {
   main_version="$(getvalue_from_configphp "version")"
   main_version="${main_version%%.*}"
 
-  if [[ ${main_version} -eq 13 ]]; then
-    # perform manual steps for Nextcloud 13 according to:
+  if [[ ${main_version} -ge 13 ]]; then
+    # perform manual steps for Nextcloud >= 13 according to:
     # https://docs.nextcloud.com/server/13/admin_manual/maintenance/upgrade.html#manual-steps-during-upgrade
-    echo "+  performing manual steps after upgrade for Nextcloud 13:"
-    echo "+  1. adding new index to share table:"
+    echo "+  performing manual steps after upgrade for Nextcloud >= 13:"
+    echo "+  1. add missing indices to tables:"
     ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indices
 
     # find out which type of database is used (SQLite3, MySQL/MariaDB, PostgreSQL)
