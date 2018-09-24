@@ -17,7 +17,7 @@ With option `-ob` this script may also be used to only backup Nextcloud (no upgr
 -- use option `-w WEBSERVER` and replace WEBSERVER with the service name of your webserver  
 - use option `-k`, if you don't want to stop the webserver (or you can't stop it for whatever reason)  
 
-**IMPORTANT:** For restoring a backup with PostgreSQL the script needs to be run either with root privileges or at least as a user who has read/write access for database `postgres` and has access without entering a password in PostgreSQL.  
+**IMPORTANT:** For restoring a backup with PostgreSQL the script needs to be run either with root privileges or at least as a user who has read/write access for database `postgres` and has access to PostgreSQL without entering a password.  
 
 ## Quick Guide
 
