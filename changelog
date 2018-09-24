@@ -1,6 +1,8 @@
 vX.X.X (XX.XX.XXXX)
 - added: if possible disable maintenance mode in case of error
 - fixed: restoring backup of PostgreSQL database failed, if no socket or port configured in config.php
+- fixed: error when using utf8mb4 collation with MySQL eliminated
+- improved: cleaner psql commands with revised comments
 - improved: also perform manual steps when upgrading to Nextcloud > 13
 
 v0.4.2 (24.07.2018)

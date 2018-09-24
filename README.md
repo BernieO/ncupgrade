@@ -15,6 +15,9 @@ With option `-ob` this script may also be used to only backup Nextcloud (no upgr
 -- the script needs then to be run with root privilege  
 -- the script uses a `systemctl` call to stop and start the webserver  
 -- use option `-w WEBSERVER` and replace WEBSERVER with the service name of your webserver  
+- use option `-k`, if you don't want to stop the webserver (or you can't stop it for whatever reason)  
+
+**IMPORTANT:** For restoring a backup with PostgreSQL the script needs to be run either with root privileges or at least as a user who has read/write access for database `postgres` and has access without entering a password in PostgreSQL.  
 
 ## Quick Guide
 
@@ -35,7 +38,7 @@ The script creates a backup of Nextclouds directory which may be used for restor
 ## Advanced
 
 All options need to be specified as command line arguments. It is mandatory to pass as very first argument the path to your Nextcloud instance as well as passing option `-w WEBSERVER` or `-k` to the script.  
-If run with option -ob options `-k`/`-w WEBSERVER` will be ignored.  
+If run with option `-ob` options `-k`/`-w WEBSERVER` will be ignored.  
 Find detailed description of all available options below.  
 
 ## Options
