@@ -1,3 +1,6 @@
+vX.X.X (XX.XX.XXXX)
+- imrpoved: use /var/tmp/ for temporary directory to not run out of space
+
 v0.4.3 (24.09.2018)
 - added: if possible, disable maintenance mode in case of error
 - fixed: restoring backup of PostgreSQL database failed, if no socket or port configured in config.php

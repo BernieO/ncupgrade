@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.3 (24.09.2018), AGPL-3.0"
+ncupgrade_version="0.4.3-1 (05.10.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -285,20 +285,11 @@ create_temp_dir() {
 
   echo "+  creating temporary directory"
 
-  # store temp-directory in variable:
-  temp_dir="/tmp/ncupgrade"
-
-  # create temp directory:
-  mkdir -p "${temp_dir}" || error_exit "ERROR: can't create temporary directory '${temp_dir}'"
-
-  # check for write permission
-  [[ -w "${temp_dir}" ]] || error_exit "ERROR: can't write in temporary directory '${temp_dir}'"
+  # create temp-directory and store it in variable:
+  temp_dir="$(mktemp -d -p /var/tmp -t ncupgrade-XXXXXXXX)"
 
   # change to temporary directory (to have shorter download commands later)
   cd "${temp_dir}"
-
-  # remove eventually existing files from previous run of this script (suppress error, if nothing is there to be removed):
-  rm -rf ./*
 }
 
 getvalue_from_configphp() {
@@ -699,7 +690,7 @@ clean_up() {
   echo "+  removing old Nextcloud directory"
   rm -r "${nextcloud_dir}_${now}"
   echo "+  removing temporary directory"
-  rm -r /tmp/ncupgrade
+  rm -r "${temp_dir}"
 }
 
 print_footer() {
@@ -1080,7 +1071,7 @@ if [[ "${only_backup:-}" == "yes" ]]; then
   create_backup
   maintenance_mode "off"
   echo "+  removing temporary directory"
-  rm -r /tmp/ncupgrade
+  rm -r "${temp_dir}"
   echo "+  Find the backup of your Nextcloud here:"
   echo "+     --> ${backup_dir}/"
   echo "+"
@@ -1102,7 +1093,7 @@ if [[ "${restore_backup:-}" == "yes" ]]; then
   maintenance_data_fingerprint
   maintenance_mode "off"
   [[ "${scan_files:-}" == "yes" ]] && files_scan_all "rescanning all files due to missing backup of data directory"
-  rm -r /tmp/ncupgrade
+  rm -r "${temp_dir}"
   echo "+  restoring backup completed!"
   echo "+"
   echo "+++++++++++++++++++++++++++++++++++++"
