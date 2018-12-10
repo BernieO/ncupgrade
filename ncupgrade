@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.4 (06.10.2018), AGPL-3.0"
+ncupgrade_version="0.4.4-1 (10.12.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -401,8 +401,9 @@ backup_database() {
         mysqldump --single-transaction -h "${dbhost}" "${dbprotocol}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
       fi
     elif [[ "$dbtype" == "pgsql" ]]; then
-      # dump PostgreSQL database:
-      PGPASSWORD="${dbpassword}" pg_dump "${dbname}" -h "${dbhost}" ${dbprotocol:-} -U "${dbuser}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      # dump PostgreSQL database
+      # (explicitly specify database with option -d):
+      PGPASSWORD="${dbpassword}" pg_dump -h "${dbhost}" ${dbprotocol:-} -U "${dbuser}" -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
     fi
     # unset sensitive data:
     unset PGPASSWORD dbpassword dbuser
@@ -831,7 +832,7 @@ restore_nextcloud_data() {
 restore_nextcloud_database() {
 # restores nextcloud database from backup
 
-  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD
+  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD regex psql_error
 
   printf "%s" "+  restoring Nextcloud database... "
 
@@ -882,36 +883,35 @@ restore_nextcloud_database() {
       mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
 
     elif [[ "$dbtype" == "pgsql" ]]; then
-      # set command for executing psql commands:
-      if [[ ${php_command} == sudo* ]]; then
-         # use sudo, if I am root:
-         psql_command="sudo -u postgres psql"
-      else
-         # I am not root, so can't use sudo.
-         # This does only work, if the current user has a role in PostgreSQL and does not need a password
-         psql_command="psql"
-      fi
+
       # delete database:
-      # NOTICE 1: the command from the official documentation is wrong:
+      # NOTICE 1: the command from the official documentation to delete the database is wrong:
       #    PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "DROP DATABASE \"${dbname}\";"
       #               due to opening the to be deleted DATABASE (with option -d DATABASE): an open database can
       #               not be deleted. Opening database postgres instead.
       # there is an alternative command: dropdb --if-exists "${dbname}"
-      ${psql_command} -q -h "${dbhost}" ${dbprotocol:-} -d postgres -c "DROP DATABASE IF EXISTS \"${dbname}\";"
+      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "DROP DATABASE IF EXISTS \"${dbname}\";"
       # create database:
-      # NOTICE 2: the command from the official documentation is wrong:
+      # NOTICE 2: the command from the official documentation to create the database is wrong:
       #    PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "CREATE DATABASE \"${dbname}\";"
       #               option -d DATABASE can't select a non existent database (non existing, because
       #               it has been deleted in the previous command). Opening database postgres instead
       # there is also an alternative command: createdb --owner="${dbuser}" "${dbname}"
-      ${psql_command} -q -h "${dbhost}" ${dbprotocol:-} -d postgres -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
-      # restore tables from backup in recreated database:
+      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
+      # restore database from backup file:
       # NOTICE 3: the command from the official documentation does not work with database dumps created according to the official documentation:
       #    PGPASSWORD="${dbpassword}" pg_restore -c -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} "${temp_dir}/nextcloud-sql.bak"
       #               command pg_restore does not restore plain text SQL script format dumps created with the command
       #               from the official documentation. We need to use psql for that.
-      ${psql_command} -q -d "${dbname}" -h "${dbhost}" ${dbprotocol:-} -f "${temp_dir}/nextcloud-sql.bak" > /dev/null # supress lots of output
+      psql_error="$(PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" 2>&1 >/dev/null)"
+      # catch errors, but ignore error for extension pl/pgsql ("psql:dummy.sql:29: ERROR:  must be owner of extension plpgsql"):
+      regex="^[[:space:]]*psql:\/var\/tmp\/ncupgrade-.{8}\/nextcloud-sql\.bak:[[:digit:]]+:[[:space:]]ERROR:[[:space:]]+must be owner of extension plpgsql[[:space:]]*$"
+      if [[ ! "${psql_error}" =~ ${regex} ]]; then
+        printf "%s\n" "ERROR!" "An error occured when recreating the database from backup:"
+        printf "%s\n" "${psql_error}"
+      fi
     fi
+
     # unset sensitive data:
     unset dbpassword dbuser
 
