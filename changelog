@@ -1,5 +1,6 @@
 vX.X.X (XX.XX.XXXX)
-- further improvement of PostgreSQL commands (backup/restore)
+- fixed: also recognise Nextcloud, if only lowercased in user documentation
+- improved: PostgreSQL commands (backup/restore)
 
 v0.4.4 (06.10.2018)
 - improved: use /var/tmp/ instead of /tmp for temporary directory to not run out of space

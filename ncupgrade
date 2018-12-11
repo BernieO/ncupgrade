@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.4-1 (10.12.2018), AGPL-3.0"
+ncupgrade_version="0.4.4-2 (11.12.2018), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -120,9 +120,9 @@ check_working_occ() {
 
   # exclude ownCloud (check user documentation for word "Nextcloud" or "ownCloud":
   while read -r line; do
-    [[ "${line}" =~ Nextcloud|ownCloud ]] && break
+    [[ "${line}" =~ [Nn]extcloud|own[Cc]loud ]] && break
   done < "${nextcloud_dir}/core/doc/user/index.html"
-  [[ "${line}" =~ Nextcloud ]] || error_exit "ERROR: this seems to be an ownCloud installation." "ownCloud is not supported!"
+  [[ "${line}" =~ [Nn]extcloud ]] || error_exit "ERROR: this seems to be an ownCloud installation." "ownCloud is not supported!"
 }
 
 check_available_version() {
