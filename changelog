@@ -1,4 +1,4 @@
-vX.X.X (XX.XX.XXXX)
+v0.4.5 (11.12.2018)
 - fixed: also recognise Nextcloud, if only lowercased in user documentation
 - improved: PostgreSQL commands (backup/restore)
 
