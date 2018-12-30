@@ -667,21 +667,12 @@ manual_steps() {
     # perform manual steps for Nextcloud >= 13 according to:
     # https://docs.nextcloud.com/server/13/admin_manual/maintenance/upgrade.html#manual-steps-during-upgrade
     echo "+  performing manual steps after upgrade for Nextcloud >= 13:"
+
     echo "+  1. add missing indices to tables:"
     ${php_command} php "${nextcloud_dir}/occ" db:add-missing-indices
 
-    # find out which type of database is used (SQLite3, MySQL/MariaDB, PostgreSQL)
-    dbtype="$(getvalue_from_configphp "dbtype")"
-    if [[ "${dbtype}" == "sqlite3" ]]; then
-      # switch to bigint not necessary for SQLite3 database, because sqlite3 uses dynamic Integer that can hold everything
-      #     from 1 byte (tinyint) to 8 byte (bigint). See: http://www.sqlite.org/datatype3.html
-      # SQLite doesn't care, so nothing to do:
-      echo "+  2. skipping switch to bigint for file ID's in the file cache table: pointless for SQLite3"
-    else
-      # switch to bigint for MySQL/MariaDB and PostgreSQL:
-      echo "+  2. switch to bigint for file ID's in the file cache table:"
-      ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
-    fi
+    echo "+  2. switch to bigint for file ID's in the file cache table:"
+    ${php_command} php "${nextcloud_dir}/occ" db:convert-filecache-bigint || :  # suppress error message in case answer to proceed was "n"
   fi
 }
 
