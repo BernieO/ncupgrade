@@ -2,7 +2,7 @@
 
 # ncupgrade by BernieO - creates backup and upgrades Nextcloud according to documentation for manual upgrades
 # Source: https://github.com/BernieO/ncupgrade
-# Copyright (C) 2018 BernieO
+# Copyright (C) 2019 BernieO
 #
 # This script is licensed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0
 #
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.5 (11.12.2018), AGPL-3.0"
+ncupgrade_version="0.4.6 (04.01.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
