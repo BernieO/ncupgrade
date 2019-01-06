@@ -865,6 +865,7 @@ restore_nextcloud_database() {
       dbprotocol="--port=${dbhost#*:}"
       dbhost="${dbhost%%:*}"
     fi
+
     if [[  "$dbtype" == "mysql" ]]; then
       # delete and recreate MySQL/MariaDB database:
       mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "DROP DATABASE IF EXISTS ${dbname}"
@@ -874,26 +875,11 @@ restore_nextcloud_database() {
       mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
 
     elif [[ "$dbtype" == "pgsql" ]]; then
-
-      # delete database:
-      # NOTICE 1: the command from the official documentation to delete the database is wrong:
-      #    PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "DROP DATABASE \"${dbname}\";"
-      #               due to opening the to be deleted DATABASE (with option -d DATABASE): an open database can
-      #               not be deleted. Opening database postgres instead.
-      # there is an alternative command: dropdb --if-exists "${dbname}"
+      # delete and recreate PostgreSQL database:
       PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "DROP DATABASE IF EXISTS \"${dbname}\";"
-      # create database:
-      # NOTICE 2: the command from the official documentation to create the database is wrong:
-      #    PGPASSWORD="${dbpassword}" psql -h ${dbhost} ${dbprotocol} -U "${dbuser}" -d "${dbname}" -c "CREATE DATABASE \"${dbname}\";"
-      #               option -d DATABASE can't select a non existent database (non existing, because
-      #               it has been deleted in the previous command). Opening database postgres instead
-      # there is also an alternative command: createdb --owner="${dbuser}" "${dbname}"
       PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
-      # restore database from backup file:
-      # NOTICE 3: the command from the official documentation does not work with database dumps created according to the official documentation:
-      #    PGPASSWORD="${dbpassword}" pg_restore -c -d ${dbname} -h ${dbhost} ${dbprotocol} -U ${dbuser} "${temp_dir}/nextcloud-sql.bak"
-      #               command pg_restore does not restore plain text SQL script format dumps created with the command
-      #               from the official documentation. We need to use psql for that.
+
+      # restore tables from backup in recreated database (and catch errors):
       psql_error="$(PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" 2>&1 >/dev/null)"
       # catch errors, but ignore error for extension pl/pgsql ("psql:dummy.sql:29: ERROR:  must be owner of extension plpgsql"):
       regex="^[[:space:]]*psql:\/var\/tmp\/ncupgrade-.{8}\/nextcloud-sql\.bak:[[:digit:]]+:[[:space:]]ERROR:[[:space:]]+must be owner of extension plpgsql[[:space:]]*$"

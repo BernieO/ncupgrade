@@ -1,3 +1,6 @@
+vX.X.X (XX.XX.XXXX)
+- improved: remove comments about restoring PostgreSQL db due to fix in Nextcloud documentation
+
 v0.4.6 (04.01.2019)
 - fixed: also switch to bigint in the filecache table when using SQLite as database
 
