@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.6-1 (25.01.2019), AGPL-3.0"
+ncupgrade_version="0.4.7 (25.01.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
