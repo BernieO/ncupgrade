@@ -1,4 +1,5 @@
 vX.X.X (XX.XX.XXXX)
+- improved: follow symlinks when archiving files
 - improved: allow upgrades from release candidates
 
 v0.4.7 (25.01.2019)
