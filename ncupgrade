@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.7 (25.01.2019), AGPL-3.0"
+ncupgrade_version="0.4.7-1 (28.02.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -103,7 +103,7 @@ preparations() {
 check_working_occ() {
 # checks whether a call for occ is working and stores Nextcloud version in variable $nc_version
 
-  local line regex="^.*( version)? [[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}$"
+  local line regex="^.*( version)? [[:digit:]]{1,2}\.[[:digit:]]\.[[:digit:]]{1,2}( RC.*)?$"
 
   # run occ command quietly:
   nc_version="$(${php_command} php "${nextcloud_dir}/occ" --no-warnings -V)"
@@ -116,6 +116,9 @@ check_working_occ() {
     error_exit "ERROR: testing occ command returned an unexpected result. Can't proceed!"
   }
   # store version number for proper naming of backup files and comparing with download.nextcloud.com:
+  # first remove eventually existing RC version from version info:
+  nc_version="${nc_version%% RC*}"
+  # then remove beginning of output, so only the version number gets stored in nc_version:
   nc_version="${nc_version##* }"
 
   # exclude ownCloud (check user documentation for word "Nextcloud" or "ownCloud":

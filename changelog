@@ -1,3 +1,6 @@
+vX.X.X (XX.XX.XXXX)
+- improved: allow upgrades from release candidates
+
 v0.4.7 (25.01.2019)
 - improved: add semicolon at end of SQL statements
 - improved: remove comments about restoring PostgreSQL db due to fix in Nextcloud documentation
