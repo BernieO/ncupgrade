@@ -1,4 +1,5 @@
 vX.X.X (XX.XX.XXXX)
+- fixed: use appropriate character set for backing up MySQL/MariaDB
 - improved: follow symlinks when archiving files
 - improved: allow upgrades from release candidates
 

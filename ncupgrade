@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.7-2 (28.02.2019), AGPL-3.0"
+ncupgrade_version="0.4.7-3 (05.05.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -395,14 +395,18 @@ backup_database() {
     fi
 
     if [[  "$dbtype" == "mysql" ]]; then
+      # check for utf8mb4 value in config.php and assign according option for mysqldump:
+      mysql_utf8mb4="$(getvalue_from_configphp "mysql.utf8mb4")"
+      [[ "${mysql_utf8mb4:-}" == "true" ]] && default_character_set="--default-character-set=utf8mb4"
       # dump MySQL/MariaDB database:
       if [[ -z "${dbprotocol:-}" ]]; then
         # no port or socket given in config.php:
-        mysqldump --single-transaction -h "${dbhost}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+        mysqldump --single-transaction ${default_character_set:-} -h "${dbhost}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
       else
         # using port or socket as configured in config.php:
-        mysqldump --single-transaction -h "${dbhost}" "${dbprotocol}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+        mysqldump --single-transaction ${default_character_set:-} -h "${dbhost}" "${dbprotocol}" -u "${dbuser}" -p"${dbpassword}" "${dbname}" > "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
       fi
+      unset -v mysql_utf8mb4 default_character_set
     elif [[ "$dbtype" == "pgsql" ]]; then
       # dump PostgreSQL database
       # (explicitly specify database with option -d):
@@ -857,7 +861,7 @@ restore_nextcloud_database() {
         dbhost="${dbhost%%:*}"
         # check for utf8mb4 value in config.php and assign according commands for recreating the database:
         mysql_utf8mb4="$(getvalue_from_configphp "mysql.utf8mb4")"
-        [[ "${mysql_utf8mb4:-}" == "true" ]] && mysql_utf8mb4="CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
+        [[ "${mysql_utf8mb4:-}" == "true" ]] && character_set="CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci"
      elif [[ "${dbtype}" == "pgsql" ]]; then
         # use socket as host for PostgreSQL:
         dbprotocol=""
@@ -872,7 +876,8 @@ restore_nextcloud_database() {
     if [[  "$dbtype" == "mysql" ]]; then
       # delete and recreate MySQL/MariaDB database:
       mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "DROP DATABASE IF EXISTS ${dbname};"
-      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "CREATE DATABASE ${dbname} ${mysql_utf8mb4:-};"
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "CREATE DATABASE ${dbname} ${character_set:-};"
+      unset -v mysql_utf8mb4 character_set
 
       # restore tables from backup in recreated database:
       mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
