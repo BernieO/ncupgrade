@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.8 (05.05.2019), AGPL-3.0"
+ncupgrade_version="0.4.8-1 (17.05.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -209,6 +209,16 @@ confirm_upgrade() {
         echo "+  However the next major release is available:   Nextcloud ${latest_available_next}"
         upgrade_to_version="${latest_available_next}"
         unset latest_available_next
+        # check for PHP >= 7.1 before upgrading to Nextcloud 16, because Nextcloud 16 requires PHP >= 7.1:
+        if [[ ${upgrade_to_version%%.*} -eq 16 ]]; then,
+          php_version="$(php -v)"
+          php_version_first="${php_version#* }"
+          php_version_second="${php_version_first#*.}"
+          php_version_second="${php_version_second%%.*}"
+          php_version_first="${php_version_first%%.*}"
+          php_version="${php_version_first}${php_version_second}"
+          [[ ${php_version} -lt 71 ]] && error_exit "Nextcloud 16 requires PHP >= 7.1" "Installed is PHP ${php_version_first}.${php_version_second}" "Upgrade PHP and run script again"
+        fi
       else
         # there is no upgrade available for the currently installed Nextcloud server:
         echo "+  Looks like the next major version (Nextcloud ${nc_version_next}) is not released yet."
