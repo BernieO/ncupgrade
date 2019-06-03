@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.9 (17.05.2019), AGPL-3.0"
+ncupgrade_version="0.4.9-1 (03.06.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -210,7 +210,7 @@ confirm_upgrade() {
         upgrade_to_version="${latest_available_next}"
         unset latest_available_next
         # check for PHP >= 7.1 before upgrading to Nextcloud 16, because Nextcloud 16 requires PHP >= 7.1:
-        if [[ ${upgrade_to_version%%.*} -eq 16 ]]; then,
+        if [[ ${upgrade_to_version%%.*} -eq 16 ]]; then
           php_version="$(php -v)"
           php_version_first="${php_version#* }"
           php_version_second="${php_version_first#*.}"
