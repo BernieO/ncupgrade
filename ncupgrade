@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.9-1 (03.06.2019), AGPL-3.0"
+ncupgrade_version="0.4.9-2 (03.06.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -420,7 +420,13 @@ backup_database() {
     elif [[ "$dbtype" == "pgsql" ]]; then
       # dump PostgreSQL database
       # (explicitly specify database with option -d):
-      PGPASSWORD="${dbpassword}" pg_dump -h "${dbhost}" ${dbprotocol:-} -U "${dbuser}" -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      if [[ -z "${dbprotocol:-}" ]]; then
+        # no port given in config.php:
+        PGPASSWORD="${dbpassword}" pg_dump -h "${dbhost}" -U "${dbuser}" -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      else
+        # using port as configured in config.php:
+        PGPASSWORD="${dbpassword}" pg_dump -h "${dbhost}" "${dbprotocol:-}" -U "${dbuser}" -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" || dump_error="$?"
+      fi
     fi
     # unset sensitive data:
     unset PGPASSWORD dbpassword dbuser
@@ -840,7 +846,9 @@ restore_nextcloud_data() {
 restore_nextcloud_database() {
 # restores nextcloud database from backup
 
-  local dbtype dbhost dbprotocol dbname dbuser dbpassword PGPASSWORD regex psql_error
+  local dbtype dbhost dbprotocol dbname dbuser dbpassword regex psql_error
+  # shellcheck disable=2034
+  local PGPASSWORD
 
   printf "%s" "+  restoring Nextcloud database... "
 
@@ -885,20 +893,24 @@ restore_nextcloud_database() {
 
     if [[  "$dbtype" == "mysql" ]]; then
       # delete and recreate MySQL/MariaDB database:
-      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "DROP DATABASE IF EXISTS ${dbname};"
-      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} -se "CREATE DATABASE ${dbname} ${character_set:-};"
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol:-}" -se "DROP DATABASE IF EXISTS ${dbname};"
+      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol:-}" -se "CREATE DATABASE ${dbname} ${character_set:-};"
       unset -v mysql_utf8mb4 character_set
 
       # restore tables from backup in recreated database:
-      mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") ${dbprotocol:-} "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
+      if [[ -n ${dbprotocol:-} ]]; then
+        mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbprotocol:-}" "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
+      else
+        mysql --defaults-extra-file=<(printf "[client]\nuser = %s\npassword = %s\nhost = %s" "${dbuser}" "${dbpassword}" "${dbhost}") "${dbname}" < "${temp_dir}/nextcloud-sql.bak"
+      fi
 
     elif [[ "$dbtype" == "pgsql" ]]; then
       # delete and recreate PostgreSQL database:
-      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "DROP DATABASE IF EXISTS \"${dbname}\";"
-      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d template1 -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
+      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" "${dbprotocol:-}" -d template1 -c "DROP DATABASE IF EXISTS \"${dbname}\";"
+      PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" "${dbprotocol:-}" -d template1 -c "CREATE DATABASE \"${dbname}\" OWNER \"${dbuser}\";"
 
       # restore tables from backup in recreated database (and catch errors):
-      psql_error="$(PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" ${dbprotocol:-} -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" 2>&1 >/dev/null)"
+      psql_error="$(PGPASSWORD="${dbpassword}" psql -q -U "${dbuser}" -h "${dbhost}" "${dbprotocol:-}" -d "${dbname}" -f "${temp_dir}/nextcloud-sql.bak" 2>&1 >/dev/null)"
       # catch errors, but ignore error for extension pl/pgsql ("psql:dummy.sql:29: ERROR:  must be owner of extension plpgsql"):
       regex="^[[:space:]]*psql:\/var\/tmp\/ncupgrade-.{8}\/nextcloud-sql\.bak:[[:digit:]]+:[[:space:]]ERROR:[[:space:]]+must be owner of extension plpgsql[[:space:]]*$"
       if [[ ! "${psql_error}" =~ ${regex} ]]; then
