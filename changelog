@@ -1,3 +1,6 @@
+vX.X.XX (XX.XX.XXXX)
+- fixed: if path to nextcloud contained a space, missing apps could not be copied
+
 v0.4.10 (03.06.2019)
 - fixed: eliminate syntax error due to accidentally added false character
 
