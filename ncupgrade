@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.12 (27.08.2019), AGPL-3.0"
+ncupgrade_version="0.4.12-1 (11.10.2019), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -275,6 +275,9 @@ locate_data_dir() {
   nc_data_dir="$(getvalue_from_configphp "datadirectory")"
   # use default value, if not set in config.php (use || instead of && so that the function returns true in any case):
   [[ "${nc_data_dir}" != "value is unset" ]] || nc_data_dir="${nextcloud_dir}/data"
+
+  # make sure nc_data_dir is an absolute path without trailing slash:
+  nc_data_dir="$(get_absolute_path "${nextcloud_dir}" "${nc_data_dir}")"
 }
 
 maintenance_mode() {
