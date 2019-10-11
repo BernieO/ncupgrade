@@ -1,4 +1,4 @@
-vX.X.X (XX.XX:XXXX)
+v0.4.13 (11.10.2019)
 - fixed: tolerate trailing slash for path to datadirectory in config.php
 
 v0.4.12 (27.08.2019)
