@@ -2,7 +2,7 @@
 
 # ncupgrade by BernieO - creates backup and upgrades Nextcloud according to documentation for manual upgrades
 # Source: https://github.com/BernieO/ncupgrade
-# Copyright (C) 2019 BernieO
+# Copyright (C) 2018-2020 BernieO
 #
 # This script is licensed under the GNU AFFERO GENERAL PUBLIC LICENSE v3.0
 #
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # ncupgrade version:
-ncupgrade_version="0.4.13 (11.10.2019), AGPL-3.0"
+ncupgrade_version="0.4.14 (29.01.2020), AGPL-3.0"
 
 ###
 ### BEGIN: FUNCTION DEFINITIONS
@@ -59,6 +59,16 @@ preparations() {
   local my_identity temp
 
   #print welcome message:
+  echo " "
+  echo "#########################################################"
+  echo "##                                                     ##"
+  echo "##   ncupgrade moved to codeberg.org in January 2020   ##"
+  echo "##   This version (v0.4.14) is outdated!               ##"
+  echo "##   Find ncupgrade's more recent releases at:         ##"
+  echo "##   https://codeberg.org/BernieO/ncupgrade            ##"
+  echo "##                                                     ##"
+  echo "#########################################################"
+  echo " "
   echo "+++++++++++++++++++++++++++++++++++++"
   echo "+"
   echo "+  ncupgrade version ${ncupgrade_version}"

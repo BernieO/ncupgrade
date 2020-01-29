@@ -1,3 +1,10 @@
+:warning: __Archived, moved to Codeberg: [https://codeberg.org/BernieO/ncupgrade](https://codeberg.org/BernieO/ncupgrade)__
+
+:point_right: This repository on GitHub is outdated.  
+:point_right: Please update your links to point to [the new URL of the repository](https://codeberg.org/BernieO/ncupgrade).
+
+---
+
 # ncupgrade
 
 This Bash script upgrades a local Nextcloud installation based on the [Nextcloud documentation for manual upgrades](https://github.com/nextcloud/documentation/blob/master/admin_manual/maintenance/manual_upgrade.rst).  
